@@ -1,12 +1,12 @@
-"""Signal DAG layer.
+"""Signal DAG layer — stage-typed payloads and the Filter protocol.
 
-The graph package realises the asmr-balance pipeline as a Kahn-style push
-data-flow DAG. The intermediate stages (raw PCM, K-weighted, z-blocks,
-band-passed, low-passed, 4x oversampled) are distinguished at the type level
-via :mod:`asmr_balance.graph.types`. The :mod:`asmr_balance.graph.builder`
-module assembles a :class:`~asmr_balance.graph.frozen.FrozenGraph` from
-declarative builder calls; the :mod:`asmr_balance.graph.scheduler` module
-executes it.
+This top-level :mod:`asmr_balance.graph` package exports *only* the type
+foundations (:class:`Stream`, :class:`Filter`, the stage ``NewType`` aliases).
+The constructive layers (:mod:`asmr_balance.graph.builder`,
+:mod:`asmr_balance.graph.scheduler`) deliberately are *not* re-exported here:
+they depend on :mod:`asmr_balance.nodes`, which in turn depends on the types
+re-exported by this ``__init__``. Eager re-export would create an import
+cycle. Consumers import the builder / scheduler with explicit submodule paths.
 """
 
 from __future__ import annotations
