@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository_owner == 'P4suta' && !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen --group release
+
+      - name: Semantic release (version + tag + GitHub Release)
+        id: release
+        run: |
+          uv run semantic-release version --commit --push --vcs-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate CHANGELOG.md
+        run: uv run git-cliff --tag "$(uv run semantic-release version --print)" -o CHANGELOG.md
+
+      - name: Build distribution
+        run: uv build
+
+      - name: SBOM (CycloneDX)
+        run: uv run cyclonedx-py environment -o bom.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/
+            CHANGELOG.md
+            bom.json
+
+      - name: Publish to PyPI (trusted publishing)
+        if: ${{ env.PYPI_PUBLISH == 'true' }}
+        env:
+          PYPI_PUBLISH: ${{ vars.PYPI_PUBLISH }}
+        run: uv publish

@@ -1,0 +1,74 @@
+site_name: asmr-balance
+site_description: Multi-axis L/R balance scanner for ASMR audio/video files
+site_url: https://P4suta.github.io/asmr-balance/
+repo_url: https://github.com/P4suta/asmr-balance
+repo_name: P4suta/asmr-balance
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Guide:
+      - guide/getting-started.md
+      - guide/cli.md
+      - guide/config.md
+      - guide/metrics.md
+      - guide/flags.md
+  - ADR:
+      - adr/index.md
+      - adr/0001-streaming-analyzer-protocol.md
+      - adr/0002-kweighting-self-impl.md
+      - adr/0003-sample-rate-policy.md
+      - adr/0004-per-channel-metric-semantics.md
+      - adr/0005-channel-layout-policy.md
+      - adr/0006-band-split.md
+      - adr/0007-gate-threshold-expose.md
+      - adr/0008-strict-tooling-defensive-gates.md
+      - adr/0009-structured-logging.md
+      - adr/0010-release-automation.md
+  - API: api/
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.snippets
+  - tables
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

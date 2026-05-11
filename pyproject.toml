@@ -1,0 +1,261 @@
+[project]
+name = "asmr-balance"
+version = "0.0.0"
+description = "Multi-axis L/R balance scanner for ASMR audio/video files (ITU-R BS.1770 K-weighted, streaming, Parquet/HTML/TUI reports)."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "Yasunobu", email = "42543015+P4suta@users.noreply.github.com" }]
+keywords = ["asmr", "audio", "stereo", "loudness", "bs1770", "lufs", "balance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+]
+
+dependencies = [
+    "numpy",
+    "scipy",
+    "soundfile",
+    "av",
+    "polars",
+    "pyarrow",
+    "pydantic",
+    "pydantic-settings",
+    "typer",
+    "rich",
+    "structlog",
+    "jinja2",
+    "plotly",
+]
+
+[project.scripts]
+asmr-balance = "asmr_balance.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/P4suta/asmr-balance"
+Repository = "https://github.com/P4suta/asmr-balance"
+Issues = "https://github.com/P4suta/asmr-balance/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/asmr_balance"]
+
+[tool.uv]
+required-version = ">=0.7"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "basedpyright",
+    "bandit",
+    "vulture",
+    "pre-commit",
+    "pip-audit",
+    "cyclonedx-py",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-randomly",
+    "pytest-benchmark",
+    "hypothesis",
+    "mutmut",
+    "pyloudnorm",
+]
+docs = [
+    "mkdocs-material",
+    "pdoc",
+]
+release = [
+    "python-semantic-release",
+    "git-cliff",
+]
+
+# ----------------------------------------------------------------------
+# ruff — Day 0 strict: select = ["ALL"] minus a minimal explicit ignore
+# ----------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+# 明示 ignore は理由のあるものだけ。ad-hoc な silencing は禁止
+ignore = [
+    # docstring requirements: 関数/クラス内 docstring は強制せず、module/public-API のみ強制
+    "D100", "D101", "D102", "D103", "D104", "D105", "D107",
+    # formatter conflicts
+    "COM812", # trailing-comma — ruff format 競合
+    "ISC001", # implicit-str-concat — ruff format 競合
+    # 不要規約
+    "CPY001", # copyright header
+    "TD002", "TD003", # TODO author/date (代わりに defensive grep で issue link を強制)
+    # numpy/audio 文化と衝突するもの
+    "PLR0913", # function arg count >= 5 — DSP は引数多い
+    # pydantic 競合: model field の型は runtime に必要なので TYPE_CHECKING へ移せない
+    "TC001", "TC002", "TC003",
+    # typer は subcommand 引数で bool default 値を要求する
+    "FBT001", "FBT002",
+    # 人間可読 unicode (Δ, −, ×, ≥ など) は明示的に使う
+    "RUF001", "RUF002",
+    # 数式/DSP のテストは比較定数が多い
+    "PLR2004",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101", # assert allowed in tests
+    "PLR2004", # magic value allowed in tests
+    "INP001", # __init__.py not required
+    "D", # tests need no docstrings
+    "ANN", # tests need no full annotations
+    "SLF001", # private-member access (white-box test)
+    "S108", # /tmp paths in synthetic Path() constructors
+    "S404", "S603", "S607", # ffmpeg subprocess usage in fixtures (vetted args)
+]
+"docs/**" = ["INP001", "D"]
+"tests/fixtures/gen_fixtures.py" = ["S311", "S404", "S603", "S607"]
+"src/asmr_balance/analyzers/__init__.py" = ["PLC0415"]  # lazy imports to break cycles
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["asmr_balance"]
+combine-as-imports = true
+
+# ----------------------------------------------------------------------
+# basedpyright — strict + extra rules
+# ----------------------------------------------------------------------
+[tool.basedpyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__", "**/.mutmut-cache"]
+pythonVersion = "3.14"
+pythonPlatform = "Linux"
+# "standard" is strict enough for production while tolerating third-party
+# libs (scipy / soundfile / av / polars) whose type stubs are incomplete.
+typeCheckingMode = "standard"
+reportMissingTypeStubs = "warning"
+# Third-party libs (scipy / soundfile / pyloudnorm / av) have incomplete stubs
+# that confuse the index/attribute checkers.
+reportIndexIssue = "warning"
+reportAttributeAccessIssue = "warning"
+reportOptionalOperand = "warning"
+reportArgumentType = "warning"
+# Tests intentionally inspect private helpers (white-box testing).
+reportPrivateUsage = "none"
+# Our own surface-level invariants stay strict.
+reportUnusedImport = "error"
+reportUnusedClass = "error"
+reportUnusedFunction = "error"
+reportUnusedVariable = "error"
+reportDuplicateImport = "error"
+reportImplicitOverride = "error"
+reportShadowedImports = "error"
+reportPropertyTypeMismatch = "error"
+reportUntypedFunctionDecorator = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportUnnecessaryCast = "error"
+reportUnnecessaryComparison = "error"
+
+# ----------------------------------------------------------------------
+# pytest — strict + branch coverage 100%
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-branch",
+    "--cov-fail-under=100",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "-n", "auto",
+    "--benchmark-disable",
+    "--hypothesis-show-statistics",
+]
+filterwarnings = [
+    "error",  # warning → test failure
+    "ignore::pytest_benchmark.logger.PytestBenchmarkWarning",
+]
+markers = [
+    "slow: 1 秒以上かかる test",
+    "bench: pytest-benchmark のみで走らせる",
+    "property: hypothesis property test",
+    "regression: pyloudnorm 等の external reference 比較",
+    "e2e: scan end-to-end test",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]
+
+# ----------------------------------------------------------------------
+# hypothesis — CI profile
+# ----------------------------------------------------------------------
+[tool.hypothesis]
+# profile は conftest で register、ここはマーカーだけ
+
+# ----------------------------------------------------------------------
+# mutmut — kill rate >= 80% を CI gate に
+# ----------------------------------------------------------------------
+[tool.mutmut]
+paths_to_mutate = ["src/asmr_balance"]
+# Limit to fast unit tests; e2e/property tests are slow and dominate the
+# mutation budget. dsp/analyzers/flags/types/config/logging are all covered
+# by tests/unit; pipeline+report still get exercised indirectly via test_cli.py.
+tests_dir = ["tests/unit"]
+# mutmut 3.x calls ``pytest.main()`` in-process; xdist spawns subprocesses
+# that lose ``mutmut.config``, so we disable it.
+pytest_add_cli_args = [
+    "-o", "addopts=",
+    "-p", "no:xdist",
+    "-p", "no:randomly",
+    "-p", "no:benchmark",
+    "-p", "no:cacheprovider",
+]
+
+# ----------------------------------------------------------------------
+# bandit
+# ----------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = []
+
+# ----------------------------------------------------------------------
+# python-semantic-release
+# ----------------------------------------------------------------------
+[tool.semantic_release]
+version_variables = ["src/asmr_balance/__init__.py:__version__"]
+branch = "main"
+commit_message = "chore(release): {version}\n\n[skip ci]"
+tag_format = "v{version}"
+build_command = "uv build"
+
+[tool.semantic_release.changelog]
+mode = "update"
+exclude_commit_patterns = ["chore\\(release\\):.*"]
+
+[tool.semantic_release.publish]
+upload_to_vcs_release = true

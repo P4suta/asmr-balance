@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Static lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run basedpyright .
+      - run: uv run bandit -c pyproject.toml -r src
+      - run: uv run vulture src --min-confidence 70
+
+  defensive:
+    name: Defensive grep gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Defensive gates
+        shell: bash
+        run: |
+          set -e
+          fail() { echo "::error::$1"; exit 1; }
+          ! rg -nP '^\s*print\(' src/ tests/ || fail "print() forbidden — use structlog"
+          ! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || fail "TODO must include (#issue)"
+          ! rg -nP '#\s*type:\s*ignore(?!\[[\w,-]+\])' src/ || fail "# type: ignore must specify rule code"
+          ! rg -nP '#\s*noqa(?!:\s*\w+)' src/ || fail "# noqa must specify rule code"
+          ! rg -nP '^\s*except\s*:' src/ || fail "bare except forbidden"
+          ! rg -nP '\beval\(|\bexec\(' src/ || fail "eval/exec forbidden"
+          ! rg -nP 'continue-on-error:\s*true' .github/ || fail "continue-on-error forbidden — fix the root cause"
+          ! rg -nP '\b__import__\(' src/ || fail "dynamic __import__ forbidden"
+          echo "✓ defensive gates passed"
+
+  actionlint:
+    name: GHA workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rhysd/actionlint@main
+
+  test:
+    name: Test + coverage (branch 100%)
+    runs-on: ubuntu-latest
+    needs: [lint, defensive]
+    steps:
+      - uses: actions/checkout@v4
+      - name: System deps
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - run: uv run pytest
+      - uses: codecov/codecov-action@v4
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          file: coverage.xml
+          fail_ci_if_error: true
+
+  mutate:
+    name: Mutation testing (kill rate ≥ 80%)
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - name: Run mutmut
+        run: uv run mutmut run
+      - name: Enforce kill rate
+        shell: bash
+        run: |
+          set -e
+          uv run mutmut results > mutmut-results.txt || true
+          cat mutmut-results.txt
+          uv run python - <<'PY'
+          import re, sys, subprocess
+          out = subprocess.run(["uv", "run", "mutmut", "results"], capture_output=True, text=True).stdout
+          killed = len(re.findall(r"^\s*\d+\.\s+(killed)", out, re.M))
+          survived = len(re.findall(r"^\s*\d+\.\s+(survived|suspicious|timeout)", out, re.M))
+          total = killed + survived
+          rate = (killed / total) if total else 1.0
+          print(f"mutmut kill rate: {rate:.2%}  (killed={killed}, survived={survived})")
+          sys.exit(0 if rate >= 0.80 else 1)
+          PY
+
+  audit:
+    name: pip-audit (CVE scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - run: uv run pip-audit
+
+  secrets:
+    name: trufflehog (verified secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified

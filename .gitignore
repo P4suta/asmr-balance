@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+*.whl
+
+# Virtual envs
+.venv/
+venv/
+.env
+
+# uv
+.python-version
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.mutmut-cache/
+mutants/
+*.benchmark
+.benchmarks/
+
+# Linters / type checkers
+.ruff_cache/
+.basedpyright/
+
+# Tooling caches
+.mypy_cache/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docs
+docs/api/
+site/
+
+# Reports / generated artifacts
+*.parquet
+*.html
+report/
+report.parquet
+report.html
+bom.json
+CHANGELOG.md
+
+# Secrets
+.env.local
+*.secret
+
+# OS
+Thumbs.db

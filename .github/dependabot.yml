@@ -1,0 +1,35 @@
+version: 2
+
+updates:
+  # Python deps via uv lockfile
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      python-runtime:
+        applies-to: version-updates
+        patterns: ["*"]
+        exclude-patterns: ["pytest*", "ruff", "basedpyright", "hypothesis", "mutmut"]
+      dev-tooling:
+        applies-to: version-updates
+        patterns: ["pytest*", "ruff", "basedpyright", "hypothesis", "mutmut", "bandit", "vulture"]
+
+  # GitHub Actions (SHA-pinned via Dependabot)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(deps)"
+
+  # Docker base image
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build(docker)"

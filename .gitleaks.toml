@@ -1,0 +1,12 @@
+title = "asmr-balance gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-specific allowlist"
+paths = [
+    '''uv\.lock$''',
+    '''tests/fixtures/.*\.(wav|flac|ogg|mp4|mkv|webm|m4a)$''',
+    '''docs/.*''',
+]
