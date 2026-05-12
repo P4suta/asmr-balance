@@ -95,11 +95,25 @@ bench:
 
 # --- run --------------------------------------------------------------
 
+# `scan` / `inspect` take an arbitrary host path. We resolve it, then bind-
+# mount the enclosing directory read-only at the SAME absolute path inside
+# the container, so the CLI can receive the host path verbatim — no env var,
+# no path translation, no copy. Reports still land in /app (= repo root).
+# Scan a directory or file anywhere on the host. Reports → ./report.parquet.
 scan PATH *FLAGS:
-    {{DC}} uv run asmr-balance scan {{PATH}} {{FLAGS}}
+    @set -eu; \
+      ABS="$(realpath -- {{quote(PATH)}})"; \
+      if [ -d "$ABS" ]; then MNT="$ABS"; else MNT="$(dirname -- "$ABS")"; fi; \
+      docker compose run --rm -v "$MNT:$MNT:ro" app \
+        uv run asmr-balance scan "$ABS" {{FLAGS}}
 
+# Inspect a single file anywhere on the host (Rich panel to stdout).
 inspect FILE *FLAGS:
-    {{DC}} uv run asmr-balance inspect {{FILE}} {{FLAGS}}
+    @set -eu; \
+      ABS="$(realpath -- {{quote(FILE)}})"; \
+      MNT="$(dirname -- "$ABS")"; \
+      docker compose run --rm -v "$MNT:$MNT:ro" app \
+        uv run asmr-balance inspect "$ABS" {{FLAGS}}
 
 schema *FLAGS:
     {{DC}} uv run asmr-balance schema {{FLAGS}}
