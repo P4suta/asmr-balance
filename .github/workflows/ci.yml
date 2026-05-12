@@ -126,9 +126,11 @@ jobs:
   secrets:
     name: trufflehog (verified secrets)
     runs-on: ubuntu-latest
-    # Skip on the very first commit of a branch where BASE == HEAD (trufflehog
-    # cannot scan an empty range). PRs and subsequent pushes get full coverage.
-    if: github.event_name == 'pull_request' || github.event.before != '0000000000000000000000000000000000000000'
+    # PR-only: on push events the action needs a stable BASE to diff against
+    # (and silently fails on branches with single-commit history). Pre-commit
+    # ``gitleaks`` already covers local push protection; trufflehog focuses on
+    # the *diff* the maintainer is about to merge.
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -136,4 +138,6 @@ jobs:
       - uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          extra_args: --only-verified --since-commit=${{ github.event.before || github.event.pull_request.base.sha }}
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --only-verified
