@@ -4,7 +4,6 @@ on:
   push:
     branches: [main, "redesign/**"]
   pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -83,39 +82,10 @@ jobs:
           file: coverage.xml
           fail_ci_if_error: true
 
-  mutate:
-    name: Mutation testing (kill rate ≥ 80%)
-    runs-on: ubuntu-latest
-    # mutmut at every commit doubles the CI bill on a 1900-statement project
-    # without telling us anything new most of the time. Run on demand via
-    # ``workflow_dispatch`` or weekly via ``schedule`` (see mutate.yml).
-    if: github.event_name == 'workflow_dispatch'
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
-      - uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-      - run: uv sync --frozen --all-groups
-      - name: Run mutmut
-        run: uv run mutmut run
-      - name: Enforce kill rate
-        shell: bash
-        run: |
-          set -e
-          uv run mutmut results > mutmut-results.txt || true
-          cat mutmut-results.txt
-          uv run python - <<'PY'
-          import re, sys, subprocess
-          out = subprocess.run(["uv", "run", "mutmut", "results"], capture_output=True, text=True).stdout
-          killed = len(re.findall(r"^\s*\d+\.\s+(killed)", out, re.M))
-          survived = len(re.findall(r"^\s*\d+\.\s+(survived|suspicious|timeout)", out, re.M))
-          total = killed + survived
-          rate = (killed / total) if total else 1.0
-          print(f"mutmut kill rate: {rate:.2%}  (killed={killed}, survived={survived})")
-          sys.exit(0 if rate >= 0.80 else 1)
-          PY
+  # Mutation testing intentionally lives outside CI — see Justfile `just mutate`
+  # for the local recipe. Running mutmut on every commit would balloon the
+  # CI budget without telling us anything useful most of the time; we keep
+  # the 80% kill-rate as a release-time check, not a per-PR gate.
 
   audit:
     name: pip-audit (CVE scan)
