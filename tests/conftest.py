@@ -1,25 +1,48 @@
-"""Test session setup: hypothesis profiles + structlog reset between tests."""
+"""Top-level pytest configuration.
+
+Registers the project-specific Hypothesis profiles and shared fixtures. Mirrors
+the configuration that ``tests/legacy/conftest.py`` provided for the legacy
+suite (kept for parity).
+"""
 
 from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING
 
-import hypothesis
-import pytest
-import structlog
+from hypothesis import HealthCheck, Phase, settings
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    import pytest
 
-hypothesis.settings.register_profile("dev", max_examples=50, deadline=None)
-hypothesis.settings.register_profile("ci", max_examples=2000, deadline=None)
-hypothesis.settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "dev"))
+# ----------------------------------------------------------------------
+# Hypothesis profiles
+# ----------------------------------------------------------------------
+settings.register_profile(
+    "dev",
+    max_examples=50,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+    print_blob=True,
+)
+settings.register_profile(
+    "ci",
+    max_examples=2000,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+    phases=(Phase.generate, Phase.target, Phase.shrink),
+    print_blob=True,
+)
+
+_profile = os.environ.get("HYPOTHESIS_PROFILE", "dev")
+settings.load_profile(_profile)
 
 
-@pytest.fixture(autouse=True)
-def structlog_reset() -> Iterator[None]:
-    """Restore structlog default config around every test."""
-    structlog.reset_defaults()
-    yield
-    structlog.reset_defaults()
+def pytest_report_header() -> list[str]:
+    """Emit the active Hypothesis profile to the pytest banner."""
+    return [f"hypothesis profile: {_profile}"]
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Placeholder hook — no modifications yet; kept as a marker for future use."""
+    _ = items

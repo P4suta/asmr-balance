@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "redesign/**"]
   pull_request:
 
 permissions:
@@ -16,15 +16,16 @@ jobs:
   lint:
     name: Static lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --frozen --all-groups
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run basedpyright .
+      - run: uv run basedpyright --level error src tests
       - run: uv run bandit -c pyproject.toml -r src
       - run: uv run vulture src --min-confidence 70
 
@@ -32,7 +33,7 @@ jobs:
     name: Defensive grep gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Defensive gates
@@ -44,6 +45,9 @@ jobs:
           ! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || fail "TODO must include (#issue)"
           ! rg -nP '#\s*type:\s*ignore(?!\[[\w,-]+\])' src/ || fail "# type: ignore must specify rule code"
           ! rg -nP '#\s*noqa(?!:\s*\w+)' src/ || fail "# noqa must specify rule code"
+          ! rg -nP '#\s*noqa(?!:\s*\w+)' src/asmr_balance/ || fail "no bare noqa in src/asmr_balance/"
+          ! rg -nP '#\s*type:\s*ignore' src/asmr_balance/ || fail "no type: ignore in src/asmr_balance/"
+          ! rg -nP '\.(z_blocks|_acc_l|_acc_r|_zi_l|_zi_r)\b' src/ || fail "no private DSP state access"
           ! rg -nP '^\s*except\s*:' src/ || fail "bare except forbidden"
           ! rg -nP '\beval\(|\bexec\(' src/ || fail "eval/exec forbidden"
           ! rg -nP 'continue-on-error:\s*true' .github/ || fail "continue-on-error forbidden — fix the root cause"
@@ -54,7 +58,7 @@ jobs:
     name: GHA workflow lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: rhysd/actionlint@main
 
   test:
@@ -62,58 +66,33 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, defensive]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: System deps
         run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --frozen --all-groups
       - run: uv run pytest
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v6
         if: ${{ env.CODECOV_TOKEN != '' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          file: coverage.xml
+          files: coverage.xml
           fail_ci_if_error: true
 
-  mutate:
-    name: Mutation testing (kill rate ≥ 80%)
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
-      - uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-      - run: uv sync --frozen --all-groups
-      - name: Run mutmut
-        run: uv run mutmut run
-      - name: Enforce kill rate
-        shell: bash
-        run: |
-          set -e
-          uv run mutmut results > mutmut-results.txt || true
-          cat mutmut-results.txt
-          uv run python - <<'PY'
-          import re, sys, subprocess
-          out = subprocess.run(["uv", "run", "mutmut", "results"], capture_output=True, text=True).stdout
-          killed = len(re.findall(r"^\s*\d+\.\s+(killed)", out, re.M))
-          survived = len(re.findall(r"^\s*\d+\.\s+(survived|suspicious|timeout)", out, re.M))
-          total = killed + survived
-          rate = (killed / total) if total else 1.0
-          print(f"mutmut kill rate: {rate:.2%}  (killed={killed}, survived={survived})")
-          sys.exit(0 if rate >= 0.80 else 1)
-          PY
+  # Mutation testing intentionally lives outside CI — see Justfile `just mutate`
+  # for the local recipe. Running mutmut on every commit would balloon the
+  # CI budget without telling us anything useful most of the time; we keep
+  # the 80% kill-rate as a release-time check, not a per-PR gate.
 
   audit:
     name: pip-audit (CVE scan)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --frozen --all-groups
@@ -122,13 +101,18 @@ jobs:
   secrets:
     name: trufflehog (verified secrets)
     runs-on: ubuntu-latest
+    # PR-only: on push events the action needs a stable BASE to diff against
+    # (and silently fails on branches with single-commit history). Pre-commit
+    # ``gitleaks`` already covers local push protection; trufflehog focuses on
+    # the *diff* the maintainer is about to merge.
+    if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
           extra_args: --only-verified

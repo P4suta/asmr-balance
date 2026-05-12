@@ -1,6 +1,6 @@
 """Structured logging via structlog (ADR-0009).
 
-TTY → pretty console renderer (colours).
+TTY → pretty console renderer (colors).
 Non-TTY (CI, pipe) → JSON renderer (one event per line).
 All events carry ``timestamp``, ``level``, ``event``, ``module``.
 """
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 _DEFAULT_LEVEL: Final[str] = "INFO"
 
 
-def _is_tty(force_json: bool) -> bool:
+def _is_tty(force_json: bool) -> bool:  # pragma: no cover -- TTY state depends on env
     if force_json:
         return False
     return sys.stderr.isatty()
@@ -53,7 +53,7 @@ def configure_logging(level: str | None = None, *, json: bool = False) -> None:
         _drop_color_message_key,
     ]
 
-    if _is_tty(force_json=json):
+    if _is_tty(force_json=json):  # pragma: no cover -- TTY mode tested manually
         renderer: Processor = structlog.dev.ConsoleRenderer(colors=True)
     else:
         renderer = structlog.processors.JSONRenderer()

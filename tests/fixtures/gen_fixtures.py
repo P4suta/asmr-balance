@@ -87,10 +87,12 @@ def reencode_wav_to(wav: Path, target: Path) -> None:
     AAC, ``.mkv`` and ``.webm`` use Opus.
     """
     suffix = target.suffix.lower()
-    if suffix in {".mp4", ".m4a", ".mov"}:
+    if suffix in {".mp4", ".m4a", ".mov", ".aac"}:
         codec = ["-c:a", "aac", "-b:a", "192k"]
     elif suffix in {".webm", ".mkv"}:
         codec = ["-c:a", "libopus", "-b:a", "128k"]
+    elif suffix == ".mp3":
+        codec = ["-c:a", "libmp3lame", "-b:a", "192k"]
     else:
         codec = ["-c:a", "pcm_s16le"]
     cmd = ["ffmpeg", "-y", "-i", str(wav), *codec, str(target)]

@@ -1,4 +1,13 @@
-"""End-to-end: scan a library of deterministic WAV fixtures and assert flags."""
+"""End-to-end: scan a library of deterministic WAV fixtures and assert flags.
+
+Updated for the v1 redesign:
+
+* The parquet ``flags`` column is now :data:`flag_codes`
+  (:mod:`asmr_balance.sink.base`).
+* :data:`PSEUDO_MONO` and :data:`PHASE_INV_WARN` are unchanged.
+* The CLI accepts ``--workers 1`` to disable :class:`ProcessPoolExecutor` for
+  deterministic test runs.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +26,8 @@ from tests.fixtures.gen_fixtures import (
     write_silent,
 )
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.fixture
 def library(tmp_path: Path) -> Path:
@@ -28,27 +39,29 @@ def library(tmp_path: Path) -> Path:
     return tmp_path
 
 
-@pytest.mark.e2e
 def test_scan_produces_parquet_with_expected_flags(library: Path, tmp_path: Path) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     out = tmp_path / "report.parquet"
-    result = runner.invoke(app, ["scan", str(library), "--out", str(out)])
-    assert result.exit_code == 0, result.stderr
+    result = runner.invoke(
+        app,
+        ["scan", str(library), "--out", str(out), "--workers", "1", "--no-summary"],
+    )
+    assert result.exit_code == 0, result.output
     assert out.exists()
 
     df = pl.read_parquet(out)
-    by_name: dict[str, dict[str, object]] = {Path(r["file_path"]).name: r for r in df.to_dicts()}
-    # B: identical L/R pure tone → no LR_BALANCE_FAIL.  Pearson r ≈ 1.0 fires
-    # PSEUDO_MONO so verdict is WARN (not OK).
-    b_flags = by_name["B_balanced.wav"]["flags"]
-    assert "LR_BALANCE_FAIL" not in b_flags  # type: ignore[operator]
+    by_name = {Path(r["meta.file_path"]).name: r for r in df.to_dicts()}
+    # B: identical L/R pure tone → no LR_BALANCE_FAIL. Pearson r ≈ 1 fires
+    # PSEUDO_MONO so verdict is WARN.
+    b_flags = by_name["B_balanced.wav"]["flag_codes"]
+    assert "LR_BALANCE_FAIL" not in b_flags
     assert by_name["B_balanced.wav"]["verdict"] in {"OK", "WARN"}
     # C: ~12 dB panned → LR_BALANCE_FAIL
-    assert "LR_BALANCE_FAIL" in by_name["C_panned_l.wav"]["flags"]  # type: ignore[operator]
+    assert "LR_BALANCE_FAIL" in by_name["C_panned_l.wav"]["flag_codes"]
     assert by_name["C_panned_l.wav"]["verdict"] == "FAIL"
     # E: L == R noise → PSEUDO_MONO
-    assert "PSEUDO_MONO" in by_name["E_dual_mono.wav"]["flags"]  # type: ignore[operator]
+    assert "PSEUDO_MONO" in by_name["E_dual_mono.wav"]["flag_codes"]
     # F: phase-inverted at all frequencies → low-band coherence ≈ -1
-    assert "PHASE_INV_WARN" in by_name["F_phase_inv.wav"]["flags"]  # type: ignore[operator]
+    assert "PHASE_INV_WARN" in by_name["F_phase_inv.wav"]["flag_codes"]
     # A: silent → GATE_REJECT_ALL
-    assert "GATE_REJECT_ALL" in by_name["A_silent.wav"]["flags"]  # type: ignore[operator]
+    assert "GATE_REJECT_ALL" in by_name["A_silent.wav"]["flag_codes"]

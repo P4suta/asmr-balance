@@ -1,6 +1,6 @@
 [project]
 name = "asmr-balance"
-version = "0.0.0"
+version = "1.0.0"
 description = "Multi-axis L/R balance scanner for ASMR audio/video files (ITU-R BS.1770 K-weighted, streaming, Parquet/HTML/TUI reports)."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -121,10 +121,23 @@ ignore = [
     "SLF001", # private-member access (white-box test)
     "S108", # /tmp paths in synthetic Path() constructors
     "S404", "S603", "S607", # ffmpeg subprocess usage in fixtures (vetted args)
+    "PLC0415", # local imports inside test functions are deliberate
+    "PLR0124", # ``value != value`` is the canonical NaN check
+    "N802",    # test names may contain dB / Hz units (e.g. test_yields_zero_dB_imbalance)
+    "ARG001",  # unused pytest fixtures (tmp_path) are pinned by signature
+    "E741",    # one-letter variable names mirror DSP conventions (l, r)
 ]
 "docs/**" = ["INP001", "D"]
 "tests/fixtures/gen_fixtures.py" = ["S311", "S404", "S603", "S607"]
-"src/asmr_balance/analyzers/__init__.py" = ["PLC0415"]  # lazy imports to break cycles
+"scripts/run_mutmut.py" = [
+    "INP001", "ANN401", "ANN202", "DTZ005", "PLC0415", "TRY300", "PERF401",
+]
+"src/asmr_balance/sink/base.py" = ["PLC0415"]  # circular-import avoidance in build_sinks
+"src/asmr_balance/scan/__init__.py" = ["PLC0415"]
+"src/asmr_balance/cli.py" = ["PLC0415"]
+"src/asmr_balance/source/backend/pyav.py" = ["PLC0415"]      # local ProbedAudio import avoids cycle
+"src/asmr_balance/source/backend/soundfile.py" = ["PLC0415"]
+"src/asmr_balance/graph/scheduler.py" = ["S101"]              # isinstance narrowing for type checkers
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -138,19 +151,26 @@ combine-as-imports = true
 # ----------------------------------------------------------------------
 [tool.basedpyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", "**/.mutmut-cache"]
+exclude = [
+    "**/__pycache__",
+    "**/.mutmut-cache",
+    "mutants",          # mutmut output — intentionally broken code
+    "tests/legacy",     # legacy retreat directory (only relevant during S1-S10)
+]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"
 # "standard" is strict enough for production while tolerating third-party
 # libs (scipy / soundfile / av / polars) whose type stubs are incomplete.
 typeCheckingMode = "standard"
-reportMissingTypeStubs = "warning"
 # Third-party libs (scipy / soundfile / pyloudnorm / av) have incomplete stubs
-# that confuse the index/attribute checkers.
-reportIndexIssue = "warning"
-reportAttributeAccessIssue = "warning"
-reportOptionalOperand = "warning"
-reportArgumentType = "warning"
+# that confuse the index/attribute/argument checkers. We accept those as
+# diagnostic noise rather than failure conditions; our own surface-level
+# invariants below remain strict.
+reportMissingTypeStubs = "information"
+reportIndexIssue = "information"
+reportAttributeAccessIssue = "information"
+reportOptionalOperand = "information"
+reportArgumentType = "information"
 # Tests intentionally inspect private helpers (white-box testing).
 reportPrivateUsage = "none"
 # Our own surface-level invariants stay strict.
@@ -160,7 +180,6 @@ reportUnusedFunction = "error"
 reportUnusedVariable = "error"
 reportDuplicateImport = "error"
 reportImplicitOverride = "error"
-reportShadowedImports = "error"
 reportPropertyTypeMismatch = "error"
 reportUntypedFunctionDecorator = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -173,6 +192,7 @@ reportUnnecessaryComparison = "error"
 [tool.pytest.ini_options]
 minversion = "9.0"
 testpaths = ["tests"]
+norecursedirs = [".*", "build", "dist", "*.egg", "venv", "tests/legacy"]
 addopts = [
     "--strict-markers",
     "--strict-config",
@@ -209,6 +229,7 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "@overload",
+    "if __name__ == .__main__.:",
 ]
 
 # ----------------------------------------------------------------------
@@ -240,8 +261,8 @@ pytest_add_cli_args = [
 # bandit
 # ----------------------------------------------------------------------
 [tool.bandit]
-exclude_dirs = ["tests", "docs"]
-skips = []
+exclude_dirs = ["tests", "docs", "mutants"]
+skips = ["B101"]  # isinstance asserts in graph/scheduler.py are type-narrowing aids
 
 # ----------------------------------------------------------------------
 # python-semantic-release

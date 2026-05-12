@@ -32,7 +32,7 @@ class Analyzer(Protocol):
 
 - 並列度は **ファイル並列のみ** (`ProcessPoolExecutor`)。Worker 内は逐次 (block 取得 → 全 Analyzer に fan-out)。
 - block size は `K-weighting + 400 ms gating` の境界に揃える (`block_size = round(sample_rate * 0.4)`)。
-- StereoBlock の型は `NDArray[np.float32]` (shape `(N, 2)`)、decode boundary でのみ runtime assert。pydantic は意味の重い型 (`Flag`, `Config`, `FileResult`) のみに使う。
+- StereoBlock の型は `ANDArray[np.float32]` (shape `(N, 2)`)、decode boundary でのみ runtime assert。pydantic は意味の重い型 (`Flag`, `Config`, `FileResult`) のみに使う。
 
 ## Consequences
 

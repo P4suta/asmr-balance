@@ -3,6 +3,9 @@
 Per ADR-0002, our K-weighting + gating implementation is independent of
 pyloudnorm at runtime, but we validate against it offline within ``±0.1 LU``
 on canonical signals. This proves we have not silently drifted from BS.1770.
+
+The redesign preserves this gate by running pyloudnorm against the same
+synthetic signals and comparing the new graph's ``LoudnessMetrics.lufs_i_stereo``.
 """
 
 from __future__ import annotations
@@ -13,7 +16,11 @@ import numpy as np
 import pyloudnorm as pyln
 import pytest
 
-from asmr_balance.dsp.lufs import measure_lufs
+from tests._compat import measure_lufs
+
+pytestmark = pytest.mark.regression
+
+TOLERANCE_LU = 0.1
 
 
 def _stereo_sine(amp_l: float, amp_r: float, freq: float, duration: float, sr: int) -> np.ndarray:
@@ -25,24 +32,19 @@ def _stereo_sine(amp_l: float, amp_r: float, freq: float, duration: float, sr: i
 
 
 def _pyln_integrated(stereo: np.ndarray, sr: int) -> float:
-    # pyloudnorm wants (N, 2) float (any), and returns LUFS (or -inf for silence)
     meter = pyln.Meter(sr)
     return float(meter.integrated_loudness(stereo.astype(np.float64)))
 
 
-TOLERANCE_LU = 0.1
-
-
-@pytest.mark.regression
 @pytest.mark.parametrize(
     ("amp_l", "amp_r", "freq", "duration"),
     [
-        (0.5, 0.5, 1000.0, 4.0),  # balanced loud
-        (0.1, 0.1, 1000.0, 4.0),  # balanced quiet (still above gate)
-        (0.5, 0.125, 1000.0, 4.0),  # 12 dB panned
-        (0.5, 0.0, 1000.0, 4.0),  # full L, zero R
-        (0.3, 0.3, 100.0, 4.0),  # low-frequency
-        (0.3, 0.3, 8000.0, 4.0),  # high-frequency
+        (0.5, 0.5, 1000.0, 4.0),
+        (0.1, 0.1, 1000.0, 4.0),
+        (0.5, 0.125, 1000.0, 4.0),
+        (0.5, 0.0, 1000.0, 4.0),
+        (0.3, 0.3, 100.0, 4.0),
+        (0.3, 0.3, 8000.0, 4.0),
     ],
 )
 def test_lufs_i_stereo_matches_pyloudnorm(
@@ -58,12 +60,10 @@ def test_lufs_i_stereo_matches_pyloudnorm(
     assert abs(ours - theirs) < TOLERANCE_LU, f"|{ours:.4f} - {theirs:.4f}| > {TOLERANCE_LU}"
 
 
-@pytest.mark.regression
 def test_lufs_parity_on_pink_noise() -> None:
     sr = 48000
     rng = np.random.default_rng(seed=12345)
     n = int(5.0 * sr)
-    # 1/√f-shaped gaussian in frequency domain → approximate pink noise
     freqs = np.fft.rfftfreq(n, 1.0 / sr)
     freqs[0] = 1.0
     spec = np.fft.rfft(rng.standard_normal(n)) / np.sqrt(freqs)
@@ -75,7 +75,6 @@ def test_lufs_parity_on_pink_noise() -> None:
     assert abs(ours - theirs) < TOLERANCE_LU
 
 
-@pytest.mark.regression
 def test_lufs_parity_silence_both_infinite() -> None:
     sr = 48000
     silence = np.zeros((sr * 2, 2), dtype=np.float32)
