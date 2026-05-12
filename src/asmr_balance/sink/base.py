@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
-from asmr_balance.metrics.record import MetricRecord, ScanStatus
+from asmr_balance.metrics.record import MetricRecord
 from asmr_balance.nodes.bandsplit import BANDS
 
 if TYPE_CHECKING:
@@ -91,14 +91,10 @@ schema order — parquet column ordering, HTML table column ordering, and TUI
 inspector field listing all follow this."""
 
 
-def _none_to_nan(value: float | None) -> float:
-    return float("nan") if value is None else value
-
-
 def result_to_flat_row(result: FileResult) -> dict[str, Any]:
     """Project a :class:`FileResult` to a dict keyed by :data:`COLUMN_NAMES`."""
     record: MetricRecord = result.record
-    row: dict[str, Any] = {name: None for name in COLUMN_NAMES}
+    row: dict[str, Any] = dict.fromkeys(COLUMN_NAMES)
     row["meta.file_path"] = str(record.meta.file_path)
     row["meta.sample_rate"] = record.meta.sample_rate
     row["meta.duration_sec"] = record.meta.duration_sec
@@ -151,12 +147,8 @@ def result_to_flat_row(result: FileResult) -> dict[str, Any]:
     return row
 
 
-def _result_status_is_analyzable(result: FileResult) -> bool:
-    return result.record.status is ScanStatus.ANALYZED
-
-
 def build_sinks(
-    out_parquet: "Iterable[str] | None",
+    out_parquet: Iterable[str] | None,
     out_html: str | None,
     show_summary: bool,
 ) -> list[Sink]:
@@ -167,8 +159,7 @@ def build_sinks(
 
     sinks: list[Sink] = []
     if out_parquet is not None:
-        for path in out_parquet:
-            sinks.append(ParquetSink(path=path))
+        sinks.extend(ParquetSink(path=path) for path in out_parquet)
     if out_html is not None:
         sinks.append(HtmlSink(path=out_html))
     if show_summary:

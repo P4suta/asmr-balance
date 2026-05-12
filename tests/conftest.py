@@ -43,6 +43,6 @@ def pytest_report_header() -> list[str]:
     return [f"hypothesis profile: {_profile}"]
 
 
-def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:  # noqa: ARG001
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Placeholder hook — no modifications yet; kept as a marker for future use."""
-    return
+    _ = items

@@ -21,14 +21,12 @@ from asmr_balance.graph.builder import GraphBuilder
 from asmr_balance.graph.frozen import FrozenGraph
 from asmr_balance.metrics.band import BandImbalanceReducer
 from asmr_balance.metrics.correlation import StereoCorrelationReducer
-from asmr_balance.metrics.dynamics import derive_psr_db
+from asmr_balance.metrics.dynamics import TruePeakReducer, derive_psr_db
 from asmr_balance.metrics.loudness import GateConfig, IntegratedLoudnessReducer
 from asmr_balance.metrics.lra import LRAReducer
 from asmr_balance.metrics.phase import LowPhaseCoherenceReducer
 from asmr_balance.metrics.record import FileMeta, MetricRecord, ScanStatus
 from asmr_balance.metrics.sliding import SlidingImbalanceReducer
-from asmr_balance.metrics.dynamics import TruePeakReducer
-
 
 _LOUDNESS = "loudness"
 _LRA = "lra"

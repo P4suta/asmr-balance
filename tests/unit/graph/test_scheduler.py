@@ -94,6 +94,6 @@ def test_chunked_input_matches_bulk_input() -> None:
         results = run_from_iter(frozen, _stereo_blocks(stereo, block_size))
         return results["loudness"].lufs_i_stereo
 
-    coarse = _run(4800)   # one 100 ms block at a time
-    fine = _run(480)      # ten 10 ms blocks per 100 ms slot
+    coarse = _run(4800)  # one 100 ms block at a time
+    fine = _run(480)  # ten 10 ms blocks per 100 ms slot
     assert coarse == pytest.approx(fine, abs=1e-9)

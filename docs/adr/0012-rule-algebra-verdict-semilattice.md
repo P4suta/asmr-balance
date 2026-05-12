@@ -73,7 +73,7 @@ join the resulting severity into the running verdict.
   flags out of the list.
 - ✗ The textual rule code (`"LR_BALANCE_FAIL"`) is still a string; we
   could lift it to an Enum but the union would have to span the full
-  rule registry (open-world) and the ergonomics aren't worth the rigour.
+  rule registry (open-world) and the ergonomics aren't worth the rigor.
 
 ## Migration
 

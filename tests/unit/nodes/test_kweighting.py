@@ -41,7 +41,7 @@ def test_sos_design_succeeds_for_audio_rates(sample_rate: int) -> None:
     # Filter is stable: poles inside the unit circle.
     for row in sos:
         b, a = row[:3], np.concatenate([[1.0], row[4:6]])
-        z, p, _ = sps.tf2zpk(b, a)
+        _z, p, _ = sps.tf2zpk(b, a)
         assert np.all(np.abs(p) < 1.0), f"unstable pole at sr={sample_rate}: {p}"
 
 

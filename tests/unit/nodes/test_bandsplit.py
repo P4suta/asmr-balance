@@ -41,7 +41,7 @@ def test_partition_assignment_is_exhaustive_and_disjoint() -> None:
     p = FourBandPartition.from_bands(BANDS)
     total = len(p.low) + len(p.low_mid) + len(p.high_mid) + len(p.high)
     assert total == 31
-    all_names = set(b.name for b in BANDS)
+    all_names = {b.name for b in BANDS}
     assert set(p.low).union(p.low_mid, p.high_mid, p.high) == all_names
 
 

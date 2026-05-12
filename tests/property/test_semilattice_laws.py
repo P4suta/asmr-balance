@@ -8,8 +8,7 @@ of :meth:`Verdict.top`.
 from __future__ import annotations
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
+from hypothesis import given, strategies as st
 
 from asmr_balance.algebra.semilattice import Verdict
 

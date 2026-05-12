@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import structlog
 
 from asmr_balance.logging import configure_logging, get_logger

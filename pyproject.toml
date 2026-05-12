@@ -121,10 +121,23 @@ ignore = [
     "SLF001", # private-member access (white-box test)
     "S108", # /tmp paths in synthetic Path() constructors
     "S404", "S603", "S607", # ffmpeg subprocess usage in fixtures (vetted args)
+    "PLC0415", # local imports inside test functions are deliberate
+    "PLR0124", # ``value != value`` is the canonical NaN check
+    "N802",    # test names may contain dB / Hz units (e.g. test_yields_zero_dB_imbalance)
+    "ARG001",  # unused pytest fixtures (tmp_path) are pinned by signature
+    "E741",    # one-letter variable names mirror DSP conventions (l, r)
 ]
 "docs/**" = ["INP001", "D"]
 "tests/fixtures/gen_fixtures.py" = ["S311", "S404", "S603", "S607"]
-"src/asmr_balance/analyzers/__init__.py" = ["PLC0415"]  # lazy imports to break cycles
+"scripts/run_mutmut.py" = [
+    "INP001", "ANN401", "ANN202", "DTZ005", "PLC0415", "TRY300", "PERF401",
+]
+"src/asmr_balance/sink/base.py" = ["PLC0415"]  # circular-import avoidance in build_sinks
+"src/asmr_balance/scan/__init__.py" = ["PLC0415"]
+"src/asmr_balance/cli.py" = ["PLC0415"]
+"src/asmr_balance/source/backend/pyav.py" = ["PLC0415"]      # local ProbedAudio import avoids cycle
+"src/asmr_balance/source/backend/soundfile.py" = ["PLC0415"]
+"src/asmr_balance/graph/scheduler.py" = ["S101"]              # isinstance narrowing for type checkers
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -210,6 +223,7 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "@overload",
+    "if __name__ == .__main__.:",
 ]
 
 # ----------------------------------------------------------------------

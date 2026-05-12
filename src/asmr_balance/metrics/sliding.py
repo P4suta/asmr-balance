@@ -49,8 +49,12 @@ class SlidingImbalanceReducer:
         nan = float("nan")
         if not self._z_l:
             return SlidingMetrics(max_lu=nan, p95_lu=nan, std_lu=nan, t_max_sec=nan)
-        l_levels = np.fromiter((_block_lufs(z) for z in self._z_l), dtype=np.float64, count=len(self._z_l))
-        r_levels = np.fromiter((_block_lufs(z) for z in self._z_r), dtype=np.float64, count=len(self._z_r))
+        l_levels = np.fromiter(
+            (_block_lufs(z) for z in self._z_l), dtype=np.float64, count=len(self._z_l)
+        )
+        r_levels = np.fromiter(
+            (_block_lufs(z) for z in self._z_r), dtype=np.float64, count=len(self._z_r)
+        )
         valid = np.isfinite(l_levels) & np.isfinite(r_levels)
         if not bool(np.any(valid)):
             return SlidingMetrics(max_lu=nan, p95_lu=nan, std_lu=nan, t_max_sec=nan)

@@ -87,10 +87,7 @@ class StereoCorrelationReducer:
         if self._n < 2:
             return StereoCorrelationMetrics(pearson_r=nan, ms_ratio_db=nan)
         denom = (self._m2_l * self._m2_r) ** 0.5
-        if denom <= 0.0:
-            pearson_r = nan
-        else:
-            pearson_r = self._cov / denom
+        pearson_r = nan if denom <= 0.0 else self._cov / denom
         if self._sum_s_sq <= 0.0 and self._sum_m_sq <= 0.0:
             ms_ratio_db = nan
         elif self._sum_s_sq <= 0.0:

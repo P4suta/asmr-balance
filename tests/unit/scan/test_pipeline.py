@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 import soundfile as sf
 
 from asmr_balance.algebra.semilattice import Verdict
@@ -15,7 +14,9 @@ from asmr_balance.scan.pipeline import scan_one
 from asmr_balance.source.adt import LayoutPolicy
 
 
-def _write_stereo_wav(path: Path, sample_rate: int = 48000, n_seconds: float = 0.5, pan_db: float = 0.0) -> Path:
+def _write_stereo_wav(
+    path: Path, sample_rate: int = 48000, n_seconds: float = 0.5, pan_db: float = 0.0
+) -> Path:
     rng = np.random.default_rng(seed=0)
     n_samples = int(sample_rate * n_seconds)
     sig = rng.standard_normal(n_samples).astype(np.float32) * 0.1

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Final
+from typing import Annotated, Final
 
 import typer
 from rich.console import Console
@@ -28,14 +28,22 @@ from asmr_balance.sink.base import COLUMN_NAMES, build_sinks
 from asmr_balance.sink.tui import render_inspect
 from asmr_balance.source.adt import LayoutPolicy
 
-if TYPE_CHECKING:
-    pass
-
-
 _AUDIO_EXTENSIONS: Final[frozenset[str]] = frozenset(
     {
-        ".wav", ".flac", ".ogg", ".opus", ".aiff", ".aif", ".au",
-        ".mp4", ".mkv", ".webm", ".m4a", ".mov", ".mp3", ".aac",
+        ".wav",
+        ".flac",
+        ".ogg",
+        ".opus",
+        ".aiff",
+        ".aif",
+        ".au",
+        ".mp4",
+        ".mkv",
+        ".webm",
+        ".m4a",
+        ".mov",
+        ".mp3",
+        ".aac",
     }
 )
 
@@ -69,7 +77,9 @@ def _global_options(
 def _find_audio_files(root: Path) -> list[Path]:
     if root.is_file():
         return [root]
-    return sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in _AUDIO_EXTENSIONS)
+    return sorted(
+        p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in _AUDIO_EXTENSIONS
+    )
 
 
 def _resolve_config(
@@ -104,7 +114,9 @@ def scan(
     if not files:
         typer.echo(f"no audio files found under {path}")
         raise typer.Exit(code=1)
-    sinks = build_sinks(out_parquet=[str(out)], out_html=str(html) if html else None, show_summary=summary)
+    sinks = build_sinks(
+        out_parquet=[str(out)], out_html=str(html) if html else None, show_summary=summary
+    )
     for sink in sinks:
         sink.open()
     written = 0

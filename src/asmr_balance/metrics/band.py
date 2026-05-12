@@ -14,19 +14,24 @@ rounding.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-import math
 import numpy as np
 
-from asmr_balance.nodes.bandsplit import BANDS, BandedFrame, BandSpec, FourBandPartition
 from asmr_balance.metrics.subtrees import BandImbalanceMetrics
+from asmr_balance.nodes.bandsplit import BANDS, BandedFrame, BandSpec, FourBandPartition
 
 
 def _safe_ratio_db(l_energy: float, r_energy: float) -> float:
     """``10·log10(L / R)``; NaN when either side is non-positive."""
-    if l_energy <= 0.0 or r_energy <= 0.0 or not math.isfinite(l_energy) or not math.isfinite(r_energy):
+    if (
+        l_energy <= 0.0
+        or r_energy <= 0.0
+        or not math.isfinite(l_energy)
+        or not math.isfinite(r_energy)
+    ):
         return float("nan")
     return 10.0 * math.log10(l_energy / r_energy)
 

@@ -7,9 +7,9 @@ import math
 import numpy as np
 import pytest
 
+from asmr_balance.graph.types import RawBlock
 from asmr_balance.metrics.band import BandImbalanceReducer
 from asmr_balance.nodes.bandsplit import BANDS, BandedFrame, ThirdOctaveBandSplit
-from asmr_balance.graph.types import RawBlock
 
 
 def _empty_frame() -> BandedFrame:

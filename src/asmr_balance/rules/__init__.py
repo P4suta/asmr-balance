@@ -1,4 +1,4 @@
-"""Rule algebra: typed predicate-with-severity registry.
+r"""Rule algebra: typed predicate-with-severity registry.
 
 Each :class:`Rule` is a typed predicate :math:`M \\times T \\to Flag \\cup \\{\\bot\\}`
 where ``M`` is a metric subtree (e.g. :class:`LoudnessMetrics`) and ``T`` is

@@ -12,8 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
-from asmr_balance.source.backend import pyav as _pyav
-from asmr_balance.source.backend import soundfile as _soundfile
+from asmr_balance.source.backend import pyav as _pyav, soundfile as _soundfile
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

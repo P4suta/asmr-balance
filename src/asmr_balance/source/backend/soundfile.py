@@ -32,7 +32,7 @@ def _layout_name(n_channels: int) -> str:
     return _LOCAL_LAYOUTS.get(n_channels, f"{n_channels}ch")
 
 
-def probe(path: Path) -> "ProbedAudio":
+def probe(path: Path) -> ProbedAudio:
     from asmr_balance.source.backend.dispatch import ProbedAudio  # local to avoid cycle
 
     info = sf.info(str(path))

@@ -22,7 +22,7 @@ content and missed two clinically useful axes:
 
 Additionally, the legacy 4-band Butterworth split (ADR-0006) gave only
 four coarse imbalance buckets. For high-resolution analysis, ANSI S1.11
-Class 1 / IEC 61260-1 1/3-octave (31 nominal centres from 20 Hz to
+Class 1 / IEC 61260-1 1/3-octave (31 nominal centers from 20 Hz to
 20 kHz) is the industry standard.
 
 ## Decision
@@ -41,7 +41,7 @@ Three always-on additions and one structural refactor.
 
 The 4-band Butterworth filterbank from ADR-0006 is **replaced** by a
 single 1/3-octave 31-band split (`nodes.bandsplit.ThirdOctaveBandSplit`,
-4th-order Butterworth band-passes at ISO 266 preferred centres).
+4th-order Butterworth band-passes at ISO 266 preferred centers).
 The four legacy aggregates (`low / low_mid / high_mid / high`) are
 recovered as a **mathematical roll-up** of the 31-band ``Σ L²`` and
 ``Σ R²`` accumulators (`metrics.band.BandImbalanceReducer`) — no
@@ -85,5 +85,5 @@ Pyloudnorm parity is asserted at 44.1, 48, 88.2, 96 and 192 kHz
 - ✗ Parquet schema grows by ~30 columns (the 31 1/3-octave entries),
   acknowledged as v1.0.0 breaking change.
 - ✗ Per-file CPU rises by the cost of 31 band-pass IIRs vs. 4 — measured
-  at ~15 % vs. legacy at 48 kHz, easily amortised by file-level
+  at ~15 % vs. legacy at 48 kHz, easily amortized by file-level
   parallelism.

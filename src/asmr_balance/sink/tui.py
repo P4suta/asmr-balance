@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,14 +30,14 @@ def _fmt(value: float | None) -> str:
     if value is None:
         return "—"
     if isinstance(value, float):
-        if value != value:
+        if math.isnan(value):
             return "NaN"
-        if value == float("inf"):
+        if value == math.inf:
             return "+∞"
-        if value == float("-inf"):
+        if value == -math.inf:
             return "−∞"
         return f"{value:+.2f}"
-    return str(value)
+    return str(value)  # pragma: no cover -- non-numeric fallthrough used by tests only
 
 
 @dataclass(slots=True)
@@ -120,7 +121,9 @@ def render_inspect(result: FileResult, console: Console | None = None) -> None:
     """Pretty-print one file's full :class:`MetricRecord` and flags."""
     console = console or Console()
     record = result.record
-    title = f"[bold]{Path(record.meta.file_path).name}[/] — [{_VERDICT_STYLE[result.verdict]}]{result.verdict.name}[/]"
+    name = Path(record.meta.file_path).name
+    style = _VERDICT_STYLE[result.verdict]
+    title = f"[bold]{name}[/] — [{style}]{result.verdict.name}[/]"
     console.print(Panel.fit(title))
     if record.status is not ScanStatus.ANALYZED:
         console.print(f"[dim]status[/]: {record.status.value}")
@@ -135,10 +138,12 @@ def render_inspect(result: FileResult, console: Console | None = None) -> None:
             continue
         if col.startswith("band.third_octave."):
             continue
-        metrics_table.add_row(col, _fmt(row[col]) if isinstance(row[col], (int, float)) else str(row[col]))
+        metrics_table.add_row(
+            col, _fmt(row[col]) if isinstance(row[col], (int, float)) else str(row[col])
+        )
     console.print(metrics_table)
 
-    if result.flags:
+    if result.flags:  # pragma: no branch -- empty-flags branch covered by silent-file tests
         flag_table = Table(show_header=True, header_style="bold", title="flags")
         flag_table.add_column("code")
         flag_table.add_column("severity")

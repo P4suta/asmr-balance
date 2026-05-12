@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar, Protocol, TypeAlias
+from typing import ClassVar, Protocol
 
 from asmr_balance.algebra.semilattice import Verdict
 from asmr_balance.metrics.record import MetricRecord, ScanStatus
@@ -60,7 +60,7 @@ class Rule[M, T](Protocol):
     def judge(self, metric_subtree: M, threshold_subtree: T) -> Flag | None: ...
 
 
-RuleSet: TypeAlias = tuple[Rule[object, object], ...]
+type RuleSet = tuple[Rule[object, object], ...]
 """An ordered tuple of rules (order influences flag emission order, not severity)."""
 
 

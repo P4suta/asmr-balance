@@ -20,7 +20,6 @@ from asmr_balance.source.adt import LayoutPolicy
 from asmr_balance.source.open import iter_blocks, open_source
 from tests.fixtures.gen_fixtures import reencode_wav_to
 
-
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg missing")
 
 
@@ -70,11 +69,18 @@ def test_pyav_probe_fails_for_audio_less_container(tmp_path: Path) -> None:
 
     out = tmp_path / "silent.mp4"
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", "color=c=black:s=64x64:d=0.5",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-an", str(out),
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=64x64:d=0.5",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        str(out),
     ]
     subprocess.run(cmd, check=True, capture_output=True)
     result = scan_one(out, Config())

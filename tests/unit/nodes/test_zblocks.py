@@ -85,7 +85,7 @@ def test_zblocks_count_for_one_second() -> None:
 
 def test_shortterm_emits_first_block_after_3s() -> None:
     f = ShortTermZBlocksFilter(sample_rate=48000)
-    # 3 s = 144000 samples. Push 29 × 100 ms (= 2.9 s) → no emission.
+    # 3 s = 144000 samples. Push 29 x 100 ms (= 2.9 s) -> no emission.
     for _ in range(29):
         emitted = f.process(_const(4800, l=0.1, r=0.1))
         assert emitted == []

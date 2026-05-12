@@ -54,7 +54,7 @@ def test_with_overrides_layout_policy() -> None:
 
 def test_load_toml_minimal(tmp_path: Path) -> None:
     p = tmp_path / "cfg.toml"
-    p.write_text('gate_lufs = -60.0\nworkers = 4\n')
+    p.write_text("gate_lufs = -60.0\nworkers = 4\n")
     cfg = load_config(p)
     assert cfg.gate_lufs == -60.0
     assert cfg.workers == 4

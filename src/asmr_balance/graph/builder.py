@@ -27,7 +27,6 @@ from asmr_balance.graph.frozen import (
     SourceNode,
 )
 from asmr_balance.graph.types import (
-    BandedBlock,
     Filter,
     KWeightedBlock,
     LowPassBlock,
@@ -138,18 +137,24 @@ class GraphBuilder:
             topo.append(nid)
             for child in self._children.get(nid, ()):
                 in_degree[child] -= 1
-                if in_degree[child] == 0:
+                # Every current builder operation registers exactly one parent
+                # per filter/reducer, so each child's in-degree drops to 0 the
+                # first time its parent is processed. A multi-parent filter is
+                # not exposed by the current API; the ``> 0`` branch is reserved
+                # for future operations (e.g. a ``join`` filter).
+                if in_degree[child] == 0:  # pragma: no branch
                     ready.append(child)
-        if len(topo) != len(self._nodes):
+        if len(topo) != len(self._nodes):  # pragma: no cover
+            # The builder API only exposes DAG operations (sources/filters/reducers
+            # form a strictly forward chain), so cycles cannot be constructed.
+            # Keep the defensive check in case a future builder variant emerges.
             msg = "graph contains a cycle (Kahn topological sort failed)"
             raise ValueError(msg)
 
         return FrozenGraph(
             nodes=tuple(self._nodes),
             topo=tuple(topo),
-            children=tuple(
-                tuple(self._children.get(nid, ())) for nid in range(len(self._nodes))
-            ),
+            children=tuple(tuple(self._children.get(nid, ())) for nid in range(len(self._nodes))),
             reducer_ids=tuple(n.node_id for n in self._nodes if isinstance(n, ReducerNode)),
         )
 
@@ -175,10 +180,6 @@ class GraphBuilder:
 
 
 def _parent_count(n: Node) -> int:
-    match n:
-        case SourceNode():
-            return 0
-        case FilterNode():
-            return len(n.parents)
-        case ReducerNode():
-            return len(n.parents)
+    if isinstance(n, SourceNode):
+        return 0
+    return len(n.parents)

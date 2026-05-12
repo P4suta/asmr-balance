@@ -66,7 +66,10 @@ class LRAReducer:
         ref_mean = float(np.mean(levels[abs_mask]))
         rel_threshold = ref_mean - _LRA_REL_GATE_DROP_LU
         gated_mask = abs_mask & (levels >= rel_threshold)
-        if not bool(np.any(gated_mask)):
+        if not bool(np.any(gated_mask)):  # pragma: no cover
+            # Mathematically unreachable: any element of ``abs_mask`` satisfying
+            # ``e >= mean(abs_kept) - 20`` will keep at least the maximum element.
+            # Defensive against future relaxations of the gating thresholds.
             return LRAMetrics(lra_lu=nan, max_short_term_lufs=float(np.max(levels[finite_mask])))
 
         gated = levels[gated_mask]

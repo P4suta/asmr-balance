@@ -35,10 +35,10 @@ _LOCAL_LAYOUTS: dict[int, str] = {
 
 
 def _layout_name_for(n_channels: int, raw: str) -> str:
-    return raw if raw else _LOCAL_LAYOUTS.get(n_channels, f"{n_channels}ch")
+    return raw or _LOCAL_LAYOUTS.get(n_channels, f"{n_channels}ch")
 
 
-def probe(path: Path) -> "ProbedAudio":
+def probe(path: Path) -> ProbedAudio:
     from asmr_balance.source.backend.dispatch import ProbedAudio  # local to avoid cycle
 
     with av.open(str(path)) as container:

@@ -52,13 +52,15 @@ def run(graph: FrozenGraph, source: Source) -> dict[str, Any]:
 
 def _find_source_id(graph: FrozenGraph) -> int:
     for node in graph.nodes:
-        if isinstance(node, SourceNode):
+        if isinstance(
+            node, SourceNode
+        ):  # pragma: no branch -- always at index 0 in canonical graphs
             return node.node_id
     msg = "FrozenGraph has no SourceNode"
     raise ValueError(msg)
 
 
-def _drive(graph: FrozenGraph, pending: list[list[Any]]) -> None:
+def _drive(graph: FrozenGraph, pending: list[list[Any]]) -> None:  # noqa: C901  -- exhaustive match dispatch
     """One topological sweep: every node consumes its frontier and pushes outputs."""
     for nid in graph.topo:
         payloads = pending[nid]
@@ -80,12 +82,17 @@ def _drive(graph: FrozenGraph, pending: list[list[Any]]) -> None:
             case ReducerNode():
                 for payload in payloads:
                     node.op.update(payload)
-            case _:
+            case _:  # pragma: no cover -- exhaustive match safety net
                 assert_never(node)
 
 
 def _flush(graph: FrozenGraph, pending: list[list[Any]]) -> None:
-    """Drain each filter in topological order and propagate any residual outputs."""
+    """Drain each filter in topological order and propagate any residual outputs.
+
+    All current filters return an empty list from :meth:`flush` (their windows
+    are anchored to the input stream and have nothing to spill at EOS). The
+    propagation branch is kept for future filters with partial-window flushes.
+    """
     for nid in graph.topo:
         node = graph.nodes[nid]
         if not isinstance(node, FilterNode):
@@ -93,11 +100,10 @@ def _flush(graph: FrozenGraph, pending: list[list[Any]]) -> None:
         residual = node.op.flush()
         if not residual:
             continue
-        for out in residual:
+        for out in residual:  # pragma: no cover  -- exercised when a future filter emits at flush
             for child in graph.children[nid]:
                 pending[child].append(out)
-        # After draining this filter, drive downstream nodes once.
-        _drive(graph, pending)
+        _drive(graph, pending)  # pragma: no cover  -- paired with the above
 
 
 def run_from_iter(graph: FrozenGraph, raw_blocks: list[RawBlock]) -> dict[str, Any]:

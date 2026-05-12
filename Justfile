@@ -32,7 +32,10 @@ docker-build:
 
 # --- fmt / lint -------------------------------------------------------
 
+# `just fmt` applies auto-fixes (ruff --fix) AND format. ユーザー要望: 機械
+# 修正は default で適用、手動レビューが必要なものだけ残す。
 fmt:
+    {{DC}} uv run ruff check . --fix
     {{DC}} uv run ruff format .
 
 lint: lint-static lint-defensive typos
@@ -49,7 +52,7 @@ lint-defensive:
     @! rg -nP '^\s*print\(' src/ tests/ || (echo "print() forbidden — use structlog" && exit 1)
     @! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || (echo "TODO must include (#issue)" && exit 1)
     @! rg -nP '#\s*type:\s*ignore' src/asmr_balance/ || (echo "type: ignore forbidden in src/" && exit 1)
-    @! rg -nP '#\s*noqa(?!:\s*\w+)?' src/asmr_balance/ || (echo "noqa without code forbidden" && exit 1)
+    @! rg -nP '#\s*noqa(?!:\s*\w+)' src/asmr_balance/ || (echo "noqa without code forbidden" && exit 1)
     @! rg -nP '^\s*except\s*:' src/ || (echo "bare except forbidden" && exit 1)
     @! rg -nP '\beval\(|\bexec\(' src/ || (echo "eval/exec forbidden" && exit 1)
     @! rg -nP 'continue-on-error:\s*true' .github/ || (echo "continue-on-error forbidden" && exit 1)

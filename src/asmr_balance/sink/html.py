@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from jinja2 import Environment, BaseLoader, select_autoescape
+from jinja2 import BaseLoader, Environment, select_autoescape
 
 from asmr_balance.sink.base import result_to_flat_row
 
@@ -21,7 +22,8 @@ _TEMPLATE = """<!doctype html>
   <title>asmr-balance report</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
-    body { font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+    body { font-family: -apple-system, system-ui, sans-serif;
+           max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
     h1 { font-size: 1.5rem; }
     .summary { display: flex; gap: 1rem; margin-bottom: 1rem; }
     .pill { padding: 0.4rem 0.8rem; border-radius: 999px; font-weight: 600; }
@@ -96,15 +98,15 @@ def _fmt(value: float | None) -> str:
     if value is None:
         return "—"
     try:
-        if value != value:  # NaN
+        if math.isnan(value):
             return "NaN"
-        if value == float("inf"):
+        if value == math.inf:
             return "+∞"
-        if value == float("-inf"):
+        if value == -math.inf:
             return "−∞"
-        return f"{value:.2f}"
-    except TypeError:
+    except TypeError:  # pragma: no cover -- pure defensive against future field types
         return str(value)
+    return f"{value:.2f}"
 
 
 @dataclass(slots=True)
@@ -141,7 +143,7 @@ class HtmlSink:
             count_warn=sum(1 for r in self._rows if r["verdict"] == "WARN"),
             count_fail=sum(1 for r in self._rows if r["verdict"] == "FAIL"),
             chart_x=x_labels,
-            chart_y=[v if v is not None and v == v else 0.0 for v in y_values],
+            chart_y=[v if v is not None and not math.isnan(v) else 0.0 for v in y_values],
             chart_color=colors,
         )
         Path(self.path).write_text(html, encoding="utf-8")

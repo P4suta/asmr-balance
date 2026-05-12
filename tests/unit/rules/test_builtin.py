@@ -134,7 +134,8 @@ def test_pseudo_mono_warns_at_high_pearson() -> None:
     rule = PseudoMonoRule()
     m = StereoCorrelationMetrics(pearson_r=0.97, ms_ratio_db=0.0)
     f = rule.judge(m, PseudoMonoThresholds(pearson_r=0.95))
-    assert f is not None and f.severity is Verdict.WARN
+    assert f is not None
+    assert f.severity is Verdict.WARN
 
 
 def test_pseudo_mono_silent_below() -> None:
@@ -155,7 +156,8 @@ def test_pseudo_mono_silent_on_nan() -> None:
 def test_phase_inv_warns_below_threshold() -> None:
     rule = PhaseInvRule()
     f = rule.judge(PhaseMetrics(low_phase_coherence=-0.5), PhaseInvThresholds())
-    assert f is not None and f.severity is Verdict.WARN
+    assert f is not None
+    assert f.severity is Verdict.WARN
 
 
 def test_phase_inv_silent_above_threshold() -> None:
@@ -170,7 +172,8 @@ def test_mid_side_narrow_warns_at_high_ratio() -> None:
     rule = MidSideNarrowRule()
     m = StereoCorrelationMetrics(pearson_r=0.0, ms_ratio_db=15.0)
     f = rule.judge(m, MidSideNarrowThresholds(db=12.0))
-    assert f is not None and f.severity is Verdict.WARN
+    assert f is not None
+    assert f.severity is Verdict.WARN
 
 
 def test_mid_side_narrow_silent_below() -> None:
@@ -182,7 +185,9 @@ def test_mid_side_narrow_silent_below() -> None:
 # --- BandBiasRule -----------------------------------------------------------
 
 
-def _band(low: float = 0.0, low_mid: float = 0.0, high_mid: float = 0.0, high: float = 0.0) -> BandImbalanceMetrics:
+def _band(
+    low: float = 0.0, low_mid: float = 0.0, high_mid: float = 0.0, high: float = 0.0
+) -> BandImbalanceMetrics:
     return BandImbalanceMetrics(
         low=low, low_mid=low_mid, high_mid=high_mid, high=high, third_octave={}
     )
@@ -224,13 +229,15 @@ def _dyn(dbtp_max: float) -> DynamicsMetrics:
 def test_true_peak_fails_at_0_dbtp() -> None:
     rule = TruePeakClipRule()
     f = rule.judge(_dyn(0.5), TruePeakClipThresholds())
-    assert f is not None and f.severity is Verdict.FAIL
+    assert f is not None
+    assert f.severity is Verdict.FAIL
 
 
 def test_true_peak_warns_at_minus_1_dbtp() -> None:
     rule = TruePeakClipRule()
     f = rule.judge(_dyn(-0.5), TruePeakClipThresholds())
-    assert f is not None and f.severity is Verdict.WARN
+    assert f is not None
+    assert f.severity is Verdict.WARN
 
 
 def test_true_peak_silent_well_below() -> None:

@@ -42,8 +42,8 @@ def test_max_short_term_reflects_loudest_block() -> None:
 def test_two_level_stream_yields_nonzero_lra() -> None:
     """A bimodal short-term distribution should produce LRA ≈ difference of levels."""
     r = LRAReducer()
-    _push(r, z_l=0.1, z_r=0.1, n=100)      # ≈ -7.7 LUFS
-    _push(r, z_l=0.01, z_r=0.01, n=100)    # ≈ -17.7 LUFS
+    _push(r, z_l=0.1, z_r=0.1, n=100)  # ≈ -7.7 LUFS
+    _push(r, z_l=0.01, z_r=0.01, n=100)  # ≈ -17.7 LUFS
     m = r.finalize()
     assert m.lra_lu > 0.0
     # Both bins exceed the relative -20 LU gate (mean ≈ -12.7), so percentiles

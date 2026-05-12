@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TypeAlias
 
 from asmr_balance.metrics.record import FileMeta
 
@@ -67,8 +66,8 @@ class SkipLayout:
     reason: str
 
 
-SkipReason: TypeAlias = SkipMono | SkipLayout
+type SkipReason = SkipMono | SkipLayout
 """Sum of typed skip reasons."""
 
-SourceResult: TypeAlias = Source | SkipReason
+type SourceResult = Source | SkipReason
 """The output of :func:`open_source` — analyze or skip."""

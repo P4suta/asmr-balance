@@ -46,15 +46,20 @@ def _polyphase_taps() -> tuple[NDArray[np.float64], ...]:
     by ``L = 4`` so that the polyphase output reconstructs a unity-gain
     upsample (the standard convention for polyphase interpolators).
     """
-    proto = _sps.firwin(
-        _PROTOTYPE_LENGTH,
-        cutoff=_CUTOFF_NORMALIZED,
-        window=("kaiser", _KAISER_BETA),
-    ).astype(np.float64) * _OVERSAMPLE_FACTOR
+    proto = (
+        _sps.firwin(
+            _PROTOTYPE_LENGTH,
+            cutoff=_CUTOFF_NORMALIZED,
+            window=("kaiser", _KAISER_BETA),
+        ).astype(np.float64)
+        * _OVERSAMPLE_FACTOR
+    )
     pad = (-len(proto)) % _OVERSAMPLE_FACTOR
-    if pad:
+    if pad:  # pragma: no branch -- 49 mod 4 = 1 ⇒ pad = 3, always non-zero
         proto = np.concatenate([proto, np.zeros(pad, dtype=np.float64)])
-    return tuple(np.ascontiguousarray(proto[k :: _OVERSAMPLE_FACTOR]) for k in range(_OVERSAMPLE_FACTOR))
+    return tuple(
+        np.ascontiguousarray(proto[k::_OVERSAMPLE_FACTOR]) for k in range(_OVERSAMPLE_FACTOR)
+    )
 
 
 def _per_phase_tap_count() -> int:
@@ -84,7 +89,7 @@ def _oversample_channel(
     y = np.empty(_OVERSAMPLE_FACTOR * x.size, dtype=np.float64)
     for k, phase in enumerate(phases):
         # 'valid' convolution: output length = len(full) - T + 1 = (T-1 + N) - T + 1 = N
-        y[k :: _OVERSAMPLE_FACTOR] = np.convolve(full, phase, mode="valid")
+        y[k::_OVERSAMPLE_FACTOR] = np.convolve(full, phase, mode="valid")
     new_state = full[-(tap_count - 1) :] if tap_count > 1 else np.empty(0, dtype=np.float64)
     return y, new_state
 
@@ -100,9 +105,9 @@ class Oversample4xPolyphase:
     _state_r: NDArray[np.float64] = field(init=False)
 
     def __post_init__(self) -> None:
-        T = _per_phase_tap_count()
-        self._state_l = np.zeros(T - 1, dtype=np.float64)
-        self._state_r = np.zeros(T - 1, dtype=np.float64)
+        tap_count = _per_phase_tap_count()
+        self._state_l = np.zeros(tap_count - 1, dtype=np.float64)
+        self._state_r = np.zeros(tap_count - 1, dtype=np.float64)
 
     def process(self, payload: RawBlock) -> list[OversampledBlock]:
         if payload.shape[0] == 0:

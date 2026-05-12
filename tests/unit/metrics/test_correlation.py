@@ -71,7 +71,8 @@ def test_mid_side_ratio_for_identical_channels_is_positive_infinity() -> None:
     r = StereoCorrelationReducer()
     r.update(block)
     m = r.finalize()
-    assert math.isinf(m.ms_ratio_db) and m.ms_ratio_db > 0
+    assert math.isinf(m.ms_ratio_db)
+    assert m.ms_ratio_db > 0
 
 
 def test_mid_side_ratio_for_inverted_channels_is_negative_infinity() -> None:
@@ -81,7 +82,8 @@ def test_mid_side_ratio_for_inverted_channels_is_negative_infinity() -> None:
     r = StereoCorrelationReducer()
     r.update(block)
     m = r.finalize()
-    assert math.isinf(m.ms_ratio_db) and m.ms_ratio_db < 0
+    assert math.isinf(m.ms_ratio_db)
+    assert m.ms_ratio_db < 0
 
 
 def test_empty_block_is_noop() -> None:

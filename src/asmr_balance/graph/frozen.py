@@ -13,7 +13,7 @@ scheduler, which ``basedpyright`` validates via ``assert_never``.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import Any
 
 from asmr_balance.algebra.reducer import Reducer
 from asmr_balance.graph.types import Filter
@@ -45,7 +45,7 @@ class ReducerNode:
     parents: tuple[int, ...]
 
 
-Node: TypeAlias = SourceNode | FilterNode | ReducerNode
+type Node = SourceNode | FilterNode | ReducerNode
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from datetime import datetime
 from time import sleep
@@ -40,10 +41,8 @@ def _patched_timeout_checker(mutants: list[Any]) -> Any:
                 est = m.estimated_time_of_tests_by_mutant.get(mutant_name, 0.0)
                 for pid, start_time in start_times_by_pid.items():
                     if (now - start_time).total_seconds() > (est + 1) * _WALL_MULT:
-                        try:
+                        with contextlib.suppress(ProcessLookupError):
                             os.kill(pid, signal.SIGXCPU)
-                        except ProcessLookupError:
-                            pass
 
     return inner
 

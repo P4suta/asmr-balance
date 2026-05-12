@@ -81,9 +81,6 @@ def iter_blocks(source: Source) -> Iterator[RawBlock]:
     """
     for frame in iter_pcm_frames(source.meta.file_path, source.block_samples):
         stereo = fold_to_stereo(frame, source.n_channels, source.layout_policy)
-        if stereo is None:
-            # Unreachable in practice: open_source rejects layouts whose
-            # folding would return None. Defensive against future policy
-            # variants that may produce optional skips per-frame.
+        if stereo is None:  # pragma: no cover -- defensive, open_source rejects upstream
             continue
         yield RawBlock(stereo)

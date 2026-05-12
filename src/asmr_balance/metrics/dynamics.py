@@ -44,10 +44,8 @@ class TruePeakReducer:
             return
         left_peak = float(np.max(np.abs(payload[:, 0])))
         right_peak = float(np.max(np.abs(payload[:, 1])))
-        if left_peak > self._max_abs_l:
-            self._max_abs_l = left_peak
-        if right_peak > self._max_abs_r:
-            self._max_abs_r = right_peak
+        self._max_abs_l = max(self._max_abs_l, left_peak)
+        self._max_abs_r = max(self._max_abs_r, right_peak)
 
     def finalize(self) -> _TruePeakAggregate:
         """Return the *intermediate* peak aggregate; ``derive_psr_db`` finishes it."""
