@@ -74,7 +74,7 @@ jobs:
           enable-cache: true
       - run: uv sync --frozen --all-groups
       - run: uv run pytest
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v6
         if: ${{ env.CODECOV_TOKEN != '' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
