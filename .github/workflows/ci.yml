@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "redesign/**"]
   pull_request:
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
       - run: uv sync --frozen --all-groups
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run basedpyright .
+      - run: uv run basedpyright --level error .
       - run: uv run bandit -c pyproject.toml -r src
       - run: uv run vulture src --min-confidence 70
 
@@ -44,6 +44,9 @@ jobs:
           ! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || fail "TODO must include (#issue)"
           ! rg -nP '#\s*type:\s*ignore(?!\[[\w,-]+\])' src/ || fail "# type: ignore must specify rule code"
           ! rg -nP '#\s*noqa(?!:\s*\w+)' src/ || fail "# noqa must specify rule code"
+          ! rg -nP '#\s*noqa(?!:\s*\w+)' src/asmr_balance/ || fail "no bare noqa in src/asmr_balance/"
+          ! rg -nP '#\s*type:\s*ignore' src/asmr_balance/ || fail "no type: ignore in src/asmr_balance/"
+          ! rg -nP '\.(z_blocks|_acc_l|_acc_r|_zi_l|_zi_r)\b' src/ || fail "no private DSP state access"
           ! rg -nP '^\s*except\s*:' src/ || fail "bare except forbidden"
           ! rg -nP '\beval\(|\bexec\(' src/ || fail "eval/exec forbidden"
           ! rg -nP 'continue-on-error:\s*true' .github/ || fail "continue-on-error forbidden — fix the root cause"
