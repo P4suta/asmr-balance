@@ -40,7 +40,7 @@ def test_loudness_metrics_is_frozen() -> None:
         delta_lu_ungated=0.0,
     )
     with pytest.raises(ValidationError):
-        m.lufs_i_stereo = -13.0  # type: ignore[misc]
+        m.lufs_i_stereo = -13.0
 
 
 def test_loudness_metrics_forbids_extra_fields() -> None:

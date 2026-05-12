@@ -29,7 +29,7 @@ def test_threshold_set_defaults() -> None:
 def test_threshold_subtree_is_frozen() -> None:
     t = LrBalanceThresholds()
     with pytest.raises(ValidationError):
-        t.warn_lu = 2.0  # type: ignore[misc]
+        t.warn_lu = 2.0
 
 
 def test_threshold_subtree_forbids_extra() -> None:

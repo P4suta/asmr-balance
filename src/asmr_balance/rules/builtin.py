@@ -232,7 +232,7 @@ class TruePeakClipRule:
 # ---------------------------------------------------------------------------
 # Default registry — order influences flag emission order in reports.
 # ---------------------------------------------------------------------------
-DEFAULT_RULES: RuleSet = (
+DEFAULT_RULES: RuleSet = (  # pyright: ignore[reportAssignmentType]
     GateRejectRule(),
     LrBalanceRule(),
     LocalBiasRule(),

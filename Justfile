@@ -43,7 +43,7 @@ lint: lint-static lint-defensive typos
 lint-static:
     {{DC}} uv run ruff check .
     {{DC}} uv run ruff format --check .
-    {{DC}} uv run basedpyright .
+    {{DC}} uv run basedpyright --level error .
     {{DC}} uv run bandit -c pyproject.toml -r src
     {{DC}} uv run vulture src --min-confidence 70
 

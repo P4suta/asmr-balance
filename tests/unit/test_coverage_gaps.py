@@ -74,7 +74,7 @@ def test_builder_add_filter_requires_parent() -> None:
 # ---------------------------------------------------------------------------
 def test_bandpass_sos_raises_when_band_clips_to_zero_width() -> None:
     """Choosing edges that the Nyquist clip collapses must raise."""
-    # 8 kHz sample rate, 20 kHz band centre → both edges clip above Nyquist → error.
+    # 8 kHz sample rate, 20 kHz band center → both edges clip above Nyquist → error.
     with pytest.raises(ValueError, match="band edges"):
         _bandpass_sos(order=4, low_edge_hz=20000.0, high_edge_hz=25000.0, sample_rate=8000)
 

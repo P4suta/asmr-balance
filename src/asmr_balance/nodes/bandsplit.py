@@ -159,8 +159,14 @@ def _bandpass_sos(
             f"(0, {nyquist}) for sample_rate={sample_rate}"
         )
         raise ValueError(msg)
-    sos = _sps.butter(order, [low, high], btype="band", fs=sample_rate, output="sos")
-    return tuple(tuple(row) for row in sos)
+    sos: NDArray[np.float64] = _sps.butter(  # pyright: ignore[reportAssignmentType]
+        order,
+        [low, high],
+        btype="band",
+        fs=sample_rate,
+        output="sos",
+    )
+    return tuple(tuple(float(v) for v in row) for row in sos)
 
 
 def _step_with_init(

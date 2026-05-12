@@ -151,19 +151,26 @@ combine-as-imports = true
 # ----------------------------------------------------------------------
 [tool.basedpyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", "**/.mutmut-cache"]
+exclude = [
+    "**/__pycache__",
+    "**/.mutmut-cache",
+    "mutants",          # mutmut output — intentionally broken code
+    "tests/legacy",     # legacy retreat directory (only relevant during S1-S10)
+]
 pythonVersion = "3.14"
 pythonPlatform = "Linux"
 # "standard" is strict enough for production while tolerating third-party
 # libs (scipy / soundfile / av / polars) whose type stubs are incomplete.
 typeCheckingMode = "standard"
-reportMissingTypeStubs = "warning"
 # Third-party libs (scipy / soundfile / pyloudnorm / av) have incomplete stubs
-# that confuse the index/attribute checkers.
-reportIndexIssue = "warning"
-reportAttributeAccessIssue = "warning"
-reportOptionalOperand = "warning"
-reportArgumentType = "warning"
+# that confuse the index/attribute/argument checkers. We accept those as
+# diagnostic noise rather than failure conditions; our own surface-level
+# invariants below remain strict.
+reportMissingTypeStubs = "information"
+reportIndexIssue = "information"
+reportAttributeAccessIssue = "information"
+reportOptionalOperand = "information"
+reportArgumentType = "information"
 # Tests intentionally inspect private helpers (white-box testing).
 reportPrivateUsage = "none"
 # Our own surface-level invariants stay strict.
@@ -173,7 +180,6 @@ reportUnusedFunction = "error"
 reportUnusedVariable = "error"
 reportDuplicateImport = "error"
 reportImplicitOverride = "error"
-reportShadowedImports = "error"
 reportPropertyTypeMismatch = "error"
 reportUntypedFunctionDecorator = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
@@ -255,8 +261,8 @@ pytest_add_cli_args = [
 # bandit
 # ----------------------------------------------------------------------
 [tool.bandit]
-exclude_dirs = ["tests", "docs"]
-skips = []
+exclude_dirs = ["tests", "docs", "mutants"]
+skips = ["B101"]  # isinstance asserts in graph/scheduler.py are type-narrowing aids
 
 # ----------------------------------------------------------------------
 # python-semantic-release

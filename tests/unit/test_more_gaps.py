@@ -109,5 +109,5 @@ def test_logging_is_tty_force_json_false_in_non_tty() -> None:
     from asmr_balance.logging import _is_tty
 
     # In pytest captured stderr, this is generally False; only the False branch is
-    # asserted (we cannot synthesise a TTY in CI without ptys).
+    # asserted (we cannot synthesize a TTY in CI without ptys).
     assert _is_tty(force_json=False) in {True, False}

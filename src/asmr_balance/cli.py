@@ -63,7 +63,7 @@ def _version_callback(value: bool) -> None:
 
 
 @app.callback()
-def _global_options(
+def _global_options(  # pyright: ignore[reportUnusedFunction] -- typer @app.callback registers it
     log_level: Annotated[str, typer.Option(help="DEBUG/INFO/WARNING/ERROR")] = "INFO",
     log_json: Annotated[bool, typer.Option("--log-json", help="Force JSON log output")] = False,
     version: Annotated[

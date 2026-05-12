@@ -18,7 +18,7 @@ one at a time per hop and per-block stats are kept by reducers downstream.
 
 from __future__ import annotations
 
-from typing import NewType, Protocol
+from typing import NewType, Protocol, override
 
 import numpy as np
 from numpy.typing import NDArray
@@ -80,12 +80,15 @@ class Stream[T]:
         """The producing node id within the graph builder."""
         return self._node_id
 
+    @override
     def __repr__(self) -> str:
         return f"Stream(node_id={self._node_id})"
 
+    @override
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Stream) and self._node_id == other._node_id
 
+    @override
     def __hash__(self) -> int:
         return hash(("Stream", self._node_id))
 

@@ -45,7 +45,7 @@ def test_analyzed_record_accepts_subtrees() -> None:
 def test_metric_record_is_frozen() -> None:
     rec = MetricRecord(meta=_meta(), status=ScanStatus.SKIPPED)
     with pytest.raises(ValidationError):
-        rec.status = ScanStatus.ANALYZED  # type: ignore[misc]
+        rec.status = ScanStatus.ANALYZED
 
 
 def test_metric_record_forbids_extra_fields() -> None:

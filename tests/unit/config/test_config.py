@@ -25,7 +25,7 @@ def test_default_config_values() -> None:
 def test_config_is_frozen() -> None:
     cfg = Config()
     with pytest.raises(ValidationError):
-        cfg.gate_lufs = -60.0  # type: ignore[misc]
+        cfg.gate_lufs = -60.0
 
 
 def test_config_forbids_extra_fields() -> None:

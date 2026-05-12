@@ -12,10 +12,6 @@ from asmr_balance.metrics.band import BandImbalanceReducer
 from asmr_balance.nodes.bandsplit import BANDS, BandedFrame, ThirdOctaveBandSplit
 
 
-def _empty_frame() -> BandedFrame:
-    return BandedFrame({b.name: np.zeros((10, 2), dtype=np.float64) for b in BANDS})
-
-
 def test_empty_stream_yields_nan_everywhere() -> None:
     r = BandImbalanceReducer()
     m = r.finalize()

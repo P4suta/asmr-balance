@@ -17,7 +17,7 @@ from asmr_balance.algebra.iir import IIRFactory, SteadyIIR, UninitializedIIR
 
 def _trivial_lpf_sos() -> np.ndarray:
     """First-order Butterworth lowpass at fc=0.1 (normalized) for tests."""
-    return sps.butter(2, 0.1, output="sos")
+    return np.asarray(sps.butter(2, 0.1, output="sos"), dtype=np.float64)
 
 
 def test_factory_builds_uninitialised_filter() -> None:

@@ -51,7 +51,7 @@ class ParquetSink:
         self._opened = False
 
 
-def _column_dtype(column: str) -> pl.DataType:
+def _column_dtype(column: str) -> pl.PolarsDataType:
     if column in {"meta.file_path", "meta.channel_layout", "status", "skip_reason", "verdict"}:
         return pl.Utf8
     if column == "meta.sample_rate":
