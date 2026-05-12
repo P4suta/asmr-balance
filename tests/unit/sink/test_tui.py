@@ -42,7 +42,7 @@ def test_render_summary_emits_table(tmp_path: Path) -> None:
     assert "Pearson" in output
 
 
-def test_render_inspect_analysed_file(tmp_path: Path) -> None:
+def test_render_inspect_analyzed_file(tmp_path: Path) -> None:
     src = _stereo_wav(tmp_path / "x.wav")
     result = scan_one(src, Config())
     console = _io_console()
