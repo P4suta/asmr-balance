@@ -16,6 +16,7 @@ jobs:
   lint:
     name: Static lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
@@ -24,7 +25,7 @@ jobs:
       - run: uv sync --frozen --all-groups
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run basedpyright --level error .
+      - run: uv run basedpyright --level error src tests
       - run: uv run bandit -c pyproject.toml -r src
       - run: uv run vulture src --min-confidence 70
 
@@ -125,6 +126,9 @@ jobs:
   secrets:
     name: trufflehog (verified secrets)
     runs-on: ubuntu-latest
+    # Skip on the very first commit of a branch where BASE == HEAD (trufflehog
+    # cannot scan an empty range). PRs and subsequent pushes get full coverage.
+    if: github.event_name == 'pull_request' || github.event.before != '0000000000000000000000000000000000000000'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -132,6 +136,4 @@ jobs:
       - uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --only-verified
+          extra_args: --only-verified --since-commit=${{ github.event.before || github.event.pull_request.base.sha }}
