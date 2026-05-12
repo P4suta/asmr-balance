@@ -79,7 +79,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          file: coverage.xml
+          files: coverage.xml
           fail_ci_if_error: true
 
   # Mutation testing intentionally lives outside CI — see Justfile `just mutate`
