@@ -1,6 +1,6 @@
 [project]
 name = "asmr-balance"
-version = "1.0.0-rc.0"
+version = "1.0.0"
 description = "Multi-axis L/R balance scanner for ASMR audio/video files (ITU-R BS.1770 K-weighted, streaming, Parquet/HTML/TUI reports)."
 readme = "README.md"
 requires-python = ">=3.14"
