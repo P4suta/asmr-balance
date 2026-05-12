@@ -1,6 +1,6 @@
 """Single-file scan pipeline.
 
-The function is intentionally short: it materialises the source ADT, dispatches
+The function is intentionally short: it materializes the source ADT, dispatches
 on it, runs the graph for non-skipped files, assembles the record, evaluates
 the rule set, and returns a :class:`FileResult`. All branching is explicit
 and exhaustively handled.
@@ -38,7 +38,7 @@ class FileResult:
 
 
 def scan_one(path: Path, config: Config) -> FileResult:
-    """Analyse one file end-to-end, returning a :class:`FileResult`.
+    """Analyze one file end-to-end, returning a :class:`FileResult`.
 
     Decode failures propagate as exceptions; layout-policy skips return a
     :class:`MetricRecord` with status :class:`ScanStatus.SKIPPED`.
@@ -72,7 +72,7 @@ class _InnerResult:
 
 
 def _scan_inner(path: Path, config: Config) -> _InnerResult:
-    source_result = open_source(path, config.layout_policy, config.block_samples)
+    source_result = open_source(path, config.layout_policy, _block_samples_for(config, path))
     match source_result:
         case SkipMono() | SkipLayout() as skip:
             record = MetricRecord(
@@ -100,3 +100,16 @@ def _build_graph_for(src: Source, config: Config):
     # graph yet (Phase E). For DOWNMIX / FL_FR we use the canonical graph.
     _ = LayoutPolicy.NATIVE_WEIGHTED  # placeholder to keep the enum import warm
     return build_default_graph(config, sample_rate=src.meta.sample_rate)
+
+
+def _block_samples_for(config: Config, path: Path) -> int:
+    """Pre-probe the file to derive a sample-rate-relative block size.
+
+    ASMR masters routinely ship at 96 / 192 kHz; a fixed 4800-sample block
+    would be only 25 ms there, multiplying the per-block Python overhead by
+    4x. We probe once cheaply and pick ``round(sample_rate * block_duration_sec)``.
+    """
+    from asmr_balance.source.backend.dispatch import probe
+
+    probed = probe(path)
+    return max(1, round(probed.sample_rate * config.block_duration_sec))

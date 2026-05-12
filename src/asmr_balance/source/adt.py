@@ -1,6 +1,6 @@
 """Source / SkipReason algebraic data type.
 
-A file is either analysable (:class:`Source`) or skipped with a typed reason
+A file is either analyzable (:class:`Source`) or skipped with a typed reason
 (:class:`SkipMono`, :class:`SkipLayout`). The two skip variants are distinct
 types so that :class:`basedpyright`'s exhaustive-match analysis flags an
 unhandled case at the :func:`assert_never` boundary in the pipeline.
@@ -36,7 +36,7 @@ class LayoutPolicy(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Source:
-    """An analysable file: header metadata + analysis parameters.
+    """An analyzable file: header metadata + analysis parameters.
 
     Note: this dataclass does *not* hold a decoded sample buffer or an open
     file handle. To stream blocks, pass the source to
@@ -71,4 +71,4 @@ SkipReason: TypeAlias = SkipMono | SkipLayout
 """Sum of typed skip reasons."""
 
 SourceResult: TypeAlias = Source | SkipReason
-"""The output of :func:`open_source` — analyse or skip."""
+"""The output of :func:`open_source` — analyze or skip."""

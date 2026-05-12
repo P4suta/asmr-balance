@@ -2,7 +2,7 @@
 
 The numerical fidelity to BS.1770-5 / pyloudnorm is enforced by
 ``tests/legacy/regression/test_pyloudnorm_parity.py``. Here we only verify
-behavioural contracts (NaN propagation, gating math, empty-stream behaviour).
+behavioral contracts (NaN propagation, gating math, empty-stream behavior).
 """
 
 from __future__ import annotations

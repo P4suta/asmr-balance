@@ -31,9 +31,11 @@ class Config(BaseModel):
     layout_policy: LayoutPolicy = LayoutPolicy.DOWNMIX
     """How to fold non-stereo audio (ADR-0005)."""
 
-    block_samples: int = 4800
-    """PCM block size in samples (100 ms @ 48 kHz). The graph builder takes
-    care of any other window size internally."""
+    block_duration_sec: float = 0.1
+    """PCM block size in seconds. The actual sample count is computed per file
+    as ``round(sample_rate * block_duration_sec)``. The default ``0.1`` (100 ms)
+    is the BS.1770 hop size; raise it for ASMR masters delivered at 96 / 192 kHz
+    if you want fewer ingestion ticks per file (memory locality wins)."""
 
     target_sample_rate: int | None = None
     """If set, all files are resampled to this rate before analysis (PyAV

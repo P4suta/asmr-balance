@@ -68,7 +68,7 @@ def assemble_record(meta: FileMeta, scheduler_output: dict[str, Any]) -> MetricR
     dynamics = derive_psr_db(peak, lra)
     return MetricRecord(
         meta=meta,
-        status=ScanStatus.ANALYSED,
+        status=ScanStatus.ANALYZED,
         loudness=scheduler_output[_LOUDNESS],
         lra=lra,
         correlation=scheduler_output[_CORRELATION],

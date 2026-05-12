@@ -1,9 +1,14 @@
 """Hypothesis property tests for the BS.1770 K-weighted pipeline.
 
-Tests focus on invariants we expect the implementation to satisfy:
-- ``L = R`` ⇒ ``delta_lu ≈ 0``
-- scaling both channels by a constant gain ⇒ ``delta_lu`` unchanged
-- swapping channels ⇒ ``delta_lu`` sign-flipped
+Black-box invariants preserved across the v0 → v1 redesign:
+
+* ``L = R`` ⇒ ``delta_lu ≈ 0``
+* uniform gain on both channels ⇒ ``delta_lu`` unchanged
+* swapping channels ⇒ ``delta_lu`` sign-flipped
+
+The tests drive :func:`tests._compat.measure_lufs`, which wraps the new
+signal-graph + reducer architecture but exposes the same ``dict[str, float]``
+shape as the legacy helper.
 """
 
 from __future__ import annotations
@@ -14,10 +19,11 @@ import numpy as np
 import pytest
 from hypothesis import HealthCheck, given, settings, strategies as st
 
-from asmr_balance.dsp.lufs import measure_lufs
+from tests._compat import measure_lufs
+
+pytestmark = pytest.mark.property
 
 
-@pytest.mark.property
 @given(
     seed=st.integers(min_value=0, max_value=2**16 - 1),
     gain=st.floats(min_value=0.05, max_value=0.6, allow_nan=False, allow_infinity=False),
@@ -26,7 +32,7 @@ from asmr_balance.dsp.lufs import measure_lufs
 @settings(max_examples=15, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_identical_channels_yield_zero_delta(seed: int, gain: float, sample_rate: int) -> None:
     rng = np.random.default_rng(seed)
-    n = int(0.6 * sample_rate)  # >= one 400 ms block
+    n = int(0.6 * sample_rate)
     mono = (rng.standard_normal(n) * gain).astype(np.float32)
     stereo = np.column_stack([mono, mono])
     out = measure_lufs(stereo, sample_rate)
@@ -35,7 +41,6 @@ def test_identical_channels_yield_zero_delta(seed: int, gain: float, sample_rate
         assert abs(delta) < 1e-6
 
 
-@pytest.mark.property
 @given(
     seed=st.integers(min_value=0, max_value=2**16 - 1),
     gain_scale=st.floats(min_value=0.5, max_value=2.0, allow_nan=False, allow_infinity=False),
@@ -56,7 +61,6 @@ def test_uniform_gain_preserves_delta(seed: int, gain_scale: float) -> None:
         assert abs(delta_a - delta_b) < 0.1
 
 
-@pytest.mark.property
 @given(seed=st.integers(min_value=0, max_value=2**16 - 1))
 @settings(max_examples=10, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 def test_channel_swap_flips_delta_sign(seed: int) -> None:

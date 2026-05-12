@@ -122,7 +122,7 @@ def render_inspect(result: FileResult, console: Console | None = None) -> None:
     record = result.record
     title = f"[bold]{Path(record.meta.file_path).name}[/] — [{_VERDICT_STYLE[result.verdict]}]{result.verdict.name}[/]"
     console.print(Panel.fit(title))
-    if record.status is not ScanStatus.ANALYSED:
+    if record.status is not ScanStatus.ANALYZED:
         console.print(f"[dim]status[/]: {record.status.value}")
         console.print(f"[dim]reason[/]: {record.skip_reason}")
         return

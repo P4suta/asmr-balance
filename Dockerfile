@@ -25,6 +25,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
+# /app is bind-mounted from the host (uid != 0) so git refuses by default.
+# pre-commit / lefthook / cyclonedx-py / git-cliff all need git to work.
+RUN git config --global --add safe.directory /app
+
 # Layer cache: lockfile/manifest first, then full source
 COPY pyproject.toml uv.lock* README.md ./
 COPY src/asmr_balance/__init__.py src/asmr_balance/

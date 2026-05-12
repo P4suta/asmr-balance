@@ -2,9 +2,9 @@
 
 Commands:
 
-* ``asmr-balance scan PATH`` — recursively analyse audio/video files under
+* ``asmr-balance scan PATH`` — recursively analyze audio/video files under
   ``PATH`` and write Parquet (+ optional HTML / TUI summary).
-* ``asmr-balance inspect FILE`` — analyse one file and print a Rich panel.
+* ``asmr-balance inspect FILE`` — analyze one file and print a Rich panel.
 * ``asmr-balance schema`` — emit the canonical parquet column list.
 * ``asmr-balance version`` — print the package version.
 """
@@ -97,7 +97,7 @@ def scan(
     ] = None,
     summary: Annotated[bool, typer.Option("--summary/--no-summary")] = True,
 ) -> None:
-    """Recursively analyse files under ``PATH`` and write the report."""
+    """Recursively analyze files under ``PATH`` and write the report."""
     config = _resolve_config(config_file, gate, layout, workers)
     files = _find_audio_files(path)
     _log.info("scan_start", root=str(path), file_count=len(files), workers=config.workers)
@@ -128,12 +128,12 @@ def scan(
 
 @app.command()
 def inspect(
-    file: Annotated[Path, typer.Argument(exists=True, help="One file to analyse")],
+    file: Annotated[Path, typer.Argument(exists=True, help="One file to analyze")],
     config_file: Annotated[Path | None, typer.Option("--config", "-c")] = None,
     gate: Annotated[float | None, typer.Option("--gate")] = None,
     layout: Annotated[LayoutPolicy | None, typer.Option("--layout")] = None,
 ) -> None:
-    """Analyse a single file and pretty-print its metrics + flags."""
+    """Analyze a single file and pretty-print its metrics + flags."""
     config = _resolve_config(config_file, gate, layout, workers=1)
     result = scan_one(file, config)
     render_inspect(result, console=Console())

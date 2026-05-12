@@ -1,6 +1,6 @@
 """Structured logging via structlog (ADR-0009).
 
-TTY → pretty console renderer (colours).
+TTY → pretty console renderer (colors).
 Non-TTY (CI, pipe) → JSON renderer (one event per line).
 All events carry ``timestamp``, ``level``, ``event``, ``module``.
 """

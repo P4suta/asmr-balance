@@ -3,7 +3,7 @@
 Consumes the same :data:`~asmr_balance.graph.types.ZBlock` stream as
 :class:`~asmr_balance.metrics.loudness.IntegratedLoudnessReducer` (the graph
 broadcasts a single z-block series to both nodes — no duplicate K-weighting).
-For every block it derives ``ΔLU = L_block − R_block`` and at finalisation
+For every block it derives ``ΔLU = L_block − R_block`` and at finalization
 reports the empirical max, p95, std, and the time index of the maximum.
 
 Blocks where either channel is silent (``z ≤ 0``) are dropped before the

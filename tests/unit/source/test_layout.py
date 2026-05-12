@@ -29,7 +29,7 @@ def test_stereo_passes_through() -> None:
     "policy",
     [LayoutPolicy.DOWNMIX, LayoutPolicy.FL_FR, LayoutPolicy.NATIVE_WEIGHTED],
 )
-def test_5_1_downmix_combines_centre_and_back(policy: LayoutPolicy) -> None:
+def test_5_1_downmix_combines_center_and_back(policy: LayoutPolicy) -> None:
     """For DOWNMIX, the BS.775 formula applies; FL_FR / NATIVE_WEIGHTED drop extras."""
     # FL, FR, FC, LFE, BL, BR
     frame = np.array(

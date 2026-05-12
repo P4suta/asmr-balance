@@ -1,6 +1,6 @@
 """Typed subtrees emitted by reducers.
 
-Every :class:`~asmr_balance.algebra.reducer.Reducer` finalises into one of the
+Every :class:`~asmr_balance.algebra.reducer.Reducer` finalizes into one of the
 classes below. The :class:`~asmr_balance.metrics.record.MetricRecord` is a
 forest of these subtrees plus a :class:`~asmr_balance.metrics.record.FileMeta`
 root.
@@ -65,7 +65,7 @@ class StereoCorrelationMetrics(_Frozen):
     Field semantics:
         - ``pearson_r``: ``[-1, 1]``; ``≥ 0.95`` triggers the pseudo-mono rule.
         - ``ms_ratio_db``: ``10·log10(Σ M² / Σ S²)``; large positive values
-          mean the side channel is anaemic (mono-narrow).
+          mean the side channel is anemic (mono-narrow).
     """
 
     pearson_r: float

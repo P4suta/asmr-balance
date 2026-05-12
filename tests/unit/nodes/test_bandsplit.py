@@ -20,21 +20,21 @@ def test_band_table_has_31_entries() -> None:
     assert len(BANDS) == 31
 
 
-def test_band_centres_span_20hz_to_20khz() -> None:
-    assert BANDS[0].centre_hz == 20.0
-    assert BANDS[-1].centre_hz == 20000.0
+def test_band_centers_span_20hz_to_20khz() -> None:
+    assert BANDS[0].center_hz == 20.0
+    assert BANDS[-1].center_hz == 20000.0
 
 
-def test_band_centres_are_strictly_increasing() -> None:
+def test_band_centers_are_strictly_increasing() -> None:
     for a, b in pairwise(BANDS):
-        assert a.centre_hz < b.centre_hz
+        assert a.center_hz < b.center_hz
 
 
 def test_band_edges_obey_third_octave_ratio() -> None:
     ratio = 2.0 ** (1.0 / 6.0)
     for b in BANDS:
-        assert b.high_edge_hz == pytest.approx(b.centre_hz * ratio, rel=1e-12)
-        assert b.low_edge_hz == pytest.approx(b.centre_hz / ratio, rel=1e-12)
+        assert b.high_edge_hz == pytest.approx(b.center_hz * ratio, rel=1e-12)
+        assert b.low_edge_hz == pytest.approx(b.center_hz / ratio, rel=1e-12)
 
 
 def test_partition_assignment_is_exhaustive_and_disjoint() -> None:
@@ -47,7 +47,7 @@ def test_partition_assignment_is_exhaustive_and_disjoint() -> None:
 
 def test_partition_cutoffs() -> None:
     p = FourBandPartition.from_bands(BANDS)
-    # low: centres < 250 Hz → 20..200 Hz = 11 bands
+    # low: centers < 250 Hz → 20..200 Hz = 11 bands
     assert len(p.low) == 11
     # low_mid: 250..1600 = 9 bands
     assert len(p.low_mid) == 9
@@ -79,8 +79,8 @@ def test_filter_frame_shapes_and_dtypes() -> None:
         assert arr.dtype == np.float64
 
 
-def test_band_isolates_its_centre_frequency() -> None:
-    """A pure tone at band-centre passes nearly intact; bands far away attenuate."""
+def test_band_isolates_its_center_frequency() -> None:
+    """A pure tone at band-center passes nearly intact; bands far away attenuate."""
     sr = 48000
     n = sr
     t = np.arange(n) / sr

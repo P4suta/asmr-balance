@@ -3,7 +3,7 @@
 The reducer tracks per-channel maximum absolute amplitude over the 4x
 oversampled stream from :class:`~asmr_balance.nodes.oversample.Oversample4xPolyphase`.
 After both this reducer and :class:`~asmr_balance.metrics.lra.LRAReducer`
-finalise, :func:`derive_psr_db` composes the peak-to-short-term-loudness
+finalize, :func:`derive_psr_db` composes the peak-to-short-term-loudness
 ratio in :class:`~asmr_balance.metrics.subtrees.DynamicsMetrics`.
 
 We deliberately *do not* couple TruePeak and LRA inside a single reducer
@@ -56,7 +56,7 @@ class TruePeakReducer:
 
 @dataclass(frozen=True, slots=True)
 class _TruePeakAggregate:
-    """Linear max-|x| per channel; finalised into :class:`DynamicsMetrics` by ``derive_psr_db``."""
+    """Linear max-|x| per channel; finalized into :class:`DynamicsMetrics` by ``derive_psr_db``."""
 
     max_abs_l: float
     max_abs_r: float

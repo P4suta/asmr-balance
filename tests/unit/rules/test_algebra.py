@@ -69,7 +69,7 @@ class _NeverRule:
 
 
 def test_evaluate_empty_ruleset_returns_ok() -> None:
-    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYSED, loudness=_loud())
+    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYZED, loudness=_loud())
     res = evaluate((), rec, ThresholdSet())
     assert res.flags == ()
     assert res.verdict is Verdict.OK
@@ -77,7 +77,7 @@ def test_evaluate_empty_ruleset_returns_ok() -> None:
 
 def test_evaluate_aggregates_via_join() -> None:
     rules = (_FailRule(), _NeverRule(), _FailRule())
-    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYSED, loudness=_loud())
+    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYZED, loudness=_loud())
     res = evaluate(rules, rec, ThresholdSet())
     assert res.verdict is Verdict.FAIL
     assert len(res.flags) == 2
@@ -103,6 +103,6 @@ def test_evaluate_errored_record_returns_no_flags() -> None:
 
 def test_evaluate_skips_rule_when_subtree_is_none() -> None:
     """Rules requesting an absent subtree are silently skipped (defensive)."""
-    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYSED, loudness=None)
+    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYZED, loudness=None)
     res = evaluate((_FailRule(),), rec, ThresholdSet())
     assert res.flags == ()

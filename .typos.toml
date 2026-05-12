@@ -1,0 +1,59 @@
+# typos — Rust-based typo checker. Run: `just typos`.
+#
+# Project-specific glossary: K-weighting, BS.1770, LUFS, ITU, EBU, ASMR, and
+# related domain vocabulary appear *everywhere* in docs / code / log messages
+# and must not be flagged.
+
+[default]
+locale = "en-us"
+
+[default.extend-words]
+# Audio engineering vocabulary
+asmr = "asmr"
+lufs = "lufs"
+loudness = "loudness"
+itu = "itu"
+ebu = "ebu"
+bs1770 = "bs1770"
+kweight = "kweight"
+kweighted = "kweighted"
+kweighting = "kweighting"
+dbtp = "dbtp"
+lra = "lra"
+psr = "psr"
+biquad = "biquad"
+butterworth = "butterworth"
+kaiser = "kaiser"
+welford = "welford"
+polyphase = "polyphase"
+soundfile = "soundfile"
+sosfilt = "sosfilt"
+pyloudnorm = "pyloudnorm"
+mutmut = "mutmut"
+pydantic = "pydantic"
+polars = "polars"
+sosfilter = "sosfilter"
+ndarray = "ndarray"
+# Project-specific brand / library names
+asmrbalance = "asmrbalance"
+mealy = "mealy"
+phantom = "phantom"
+monoid = "monoid"
+semilattice = "semilattice"
+
+[files]
+extend-exclude = [
+  ".git/",
+  "uv.lock",
+  ".coverage",
+  "coverage.xml",
+  "bom.json",
+  "dist/",
+  "tests/legacy/",
+  ".pytest_cache/",
+  ".mutmut-cache/",
+  ".hypothesis/",
+  ".ruff_cache/",
+  ".basedpyright/",
+  "mutants/",
+]

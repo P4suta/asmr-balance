@@ -2,7 +2,7 @@
 
 Consumes :data:`~asmr_balance.nodes.bandsplit.BandedFrame` payloads (31
 1/3-octave band stereo arrays) and accumulates per-band running sums of
-``L²`` and ``R²``. At finalisation we compute the 31-band imbalances in dB
+``L²`` and ``R²``. At finalization we compute the 31-band imbalances in dB
 and the four legacy aggregates (low / low_mid / high_mid / high) as
 mathematical partition sums of the same 31 bands — no extra IIR pass.
 

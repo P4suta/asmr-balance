@@ -7,7 +7,7 @@ spec reference values at 48 kHz to printed precision; the
 ``tests/regression/test_pyloudnorm_parity.py`` regression test enforces
 ``±0.1 LU`` agreement with pyloudnorm across the full sample-rate range.
 
-This module **does not change** the numeric behaviour of the legacy
+This module **does not change** the numeric behavior of the legacy
 ``dsp/kweight.py`` — the SOS coefficients are bit-identical. What changes is
 the API surface: state is managed via
 :class:`~asmr_balance.algebra.iir.UninitializedIIR` /

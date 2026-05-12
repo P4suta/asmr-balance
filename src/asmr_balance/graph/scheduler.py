@@ -41,7 +41,7 @@ def run(graph: FrozenGraph, source: Source) -> dict[str, Any]:
     # Flush phase — terminal drain.
     _flush(graph, pending)
 
-    # Finalise reducers.
+    # Finalize reducers.
     results: dict[str, Any] = {}
     for nid in graph.reducer_ids:
         node = graph.nodes[nid]

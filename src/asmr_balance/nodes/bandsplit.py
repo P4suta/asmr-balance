@@ -1,4 +1,4 @@
-"""1/3-octave band split — ANSI S1.11 Class 1 / IEC 61260-1 preferred centres.
+"""1/3-octave band split — ANSI S1.11 Class 1 / IEC 61260-1 preferred centers.
 
 Replaces the legacy 4-band Butterworth split (ADR-0006). The 1/3-octave 31
 bands form the always-on primary partition of the audio spectrum; the
@@ -6,8 +6,8 @@ legacy 4-band scheme (``low / low_mid / high_mid / high``) is recovered as a
 **roll-up aggregate** by summing per-band energies in
 :mod:`asmr_balance.metrics.band`.
 
-Centre frequencies follow ISO 266 preferred numbers from 20 Hz to 20 kHz
-inclusive (31 values). Each band is realised as a 4th-order Butterworth
+Center frequencies follow ISO 266 preferred numbers from 20 Hz to 20 kHz
+inclusive (31 values). Each band is realized as a 4th-order Butterworth
 band-pass with edges ``f_c / 2^(1/6)`` and ``f_c * 2^(1/6)`` (the standard
 1/3-octave half-width). Edge bands are clipped to the open Nyquist interval.
 
@@ -32,17 +32,17 @@ from asmr_balance.graph.types import RawBlock
 
 @dataclass(frozen=True, slots=True)
 class BandSpec:
-    """One 1/3-octave band: nominal centre, low/high edges (Hz), partition tag."""
+    """One 1/3-octave band: nominal center, low/high edges (Hz), partition tag."""
 
     name: str
-    centre_hz: float
+    center_hz: float
     low_edge_hz: float
     high_edge_hz: float
     partition: str  # "low" | "low_mid" | "high_mid" | "high"
 
 
 _THIRD_OCTAVE_RATIO: Final[float] = 2.0 ** (1.0 / 6.0)
-_NOMINAL_CENTRES: Final[tuple[float, ...]] = (
+_NOMINAL_CENTERS: Final[tuple[float, ...]] = (
     20.0, 25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0,
     200.0, 250.0, 315.0, 400.0, 500.0, 630.0, 800.0, 1000.0, 1250.0, 1600.0,
     2000.0, 2500.0, 3150.0, 4000.0, 5000.0, 6300.0, 8000.0, 10000.0, 12500.0,
@@ -50,34 +50,34 @@ _NOMINAL_CENTRES: Final[tuple[float, ...]] = (
 )
 
 
-def _partition_for(centre_hz: float) -> str:
-    if centre_hz < 250.0:
+def _partition_for(center_hz: float) -> str:
+    if center_hz < 250.0:
         return "low"
-    if centre_hz < 2000.0:
+    if center_hz < 2000.0:
         return "low_mid"
-    if centre_hz < 8000.0:
+    if center_hz < 8000.0:
         return "high_mid"
     return "high"
 
 
-def _band_name(centre_hz: float) -> str:
-    if centre_hz >= 1000.0:
-        return f"b_{int(round(centre_hz))}hz"
-    if centre_hz == int(centre_hz):
-        return f"b_{int(centre_hz)}hz"
+def _band_name(center_hz: float) -> str:
+    if center_hz >= 1000.0:
+        return f"b_{int(round(center_hz))}hz"
+    if center_hz == int(center_hz):
+        return f"b_{int(center_hz)}hz"
     # 31.5 → b_31_5hz
-    return f"b_{str(centre_hz).replace('.', '_')}hz"
+    return f"b_{str(center_hz).replace('.', '_')}hz"
 
 
 BANDS: Final[tuple[BandSpec, ...]] = tuple(
     BandSpec(
         name=_band_name(fc),
-        centre_hz=fc,
+        center_hz=fc,
         low_edge_hz=fc / _THIRD_OCTAVE_RATIO,
         high_edge_hz=fc * _THIRD_OCTAVE_RATIO,
         partition=_partition_for(fc),
     )
-    for fc in _NOMINAL_CENTRES
+    for fc in _NOMINAL_CENTERS
 )
 """The full canonical 1/3-octave band table (31 entries, 20 Hz – 20 kHz)."""
 

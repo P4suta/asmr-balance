@@ -33,7 +33,7 @@ class Reducer[In, M](Protocol):
 
     Implementations carry internal state and are *not* thread-safe. The
     scheduler guarantees a strict ``update*`` then exactly-one ``finalize``
-    call sequence; behaviour after ``finalize`` is undefined.
+    call sequence; behavior after ``finalize`` is undefined.
 
     Attributes:
         name: Symbolic identifier used for telemetry / log fields.

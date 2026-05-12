@@ -1,15 +1,15 @@
-"""Type-state IIR filters — initialisation encoded in types, not in flags.
+"""Type-state IIR filters — initialization encoded in types, not in flags.
 
 Stateful IIR filters in this codebase obey a strict two-phase lifecycle:
 
 1. **Uninitialised** — the filter has the SOS coefficients and a template
    ``zi`` (from :func:`scipy.signal.sosfilt_zi`) but the first input sample
    has not yet been observed. Calling ``step`` in this state would produce a
-   transient artefact that BS.1770 parity tests reject.
+   transient artifact that BS.1770 parity tests reject.
 2. **Steady** — the first sample has been used to scale the template ``zi``
    into a steady-state initial condition. ``step`` is now total.
 
-Previous incarnations encoded this with a runtime ``self._initialised: bool``
+Previous incarnations encoded this with a runtime ``self._initialized: bool``
 flag and a guard inside ``push``. That pattern surfaces three times in the
 legacy DSP layer (kweight / bands / phase) with subtle divergences. Here we
 make the invariant *type-level*: two disjoint classes

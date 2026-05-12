@@ -19,7 +19,7 @@ def _stereo_blocks(samples: np.ndarray, block_samples: int) -> list[RawBlock]:
     ]
 
 
-def test_run_empty_input_finalises_all_reducers() -> None:
+def test_run_empty_input_finalizes_all_reducers() -> None:
     g = GraphBuilder()
     raw = g.source()
     g.reduce("correlation", StereoCorrelationReducer(), raw)

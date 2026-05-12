@@ -1,7 +1,7 @@
 """Verdict — a bounded join-semilattice for diagnostic severity.
 
 The verdict carrier set is the three-element total order ``OK < WARN < FAIL``
-with the join operator ``⊔`` realised as ``__or__``. This satisfies the
+with the join operator ``⊔`` realized as ``__or__``. This satisfies the
 semilattice axioms (associativity, commutativity, idempotence) and is bounded
 by the bottom element ``OK`` (the identity of ``__or__``). The top element
 ``FAIL`` annihilates: ``x ⊔ FAIL = FAIL`` for all x.

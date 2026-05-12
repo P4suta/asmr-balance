@@ -5,7 +5,7 @@ The schema is the flat dotted name space from
 is < 1 KB and typical scans process at most a few thousand files; if a future
 deployment needs streaming row groups, polars supports it via
 :meth:`pl.DataFrame.write_parquet` with row-group sizing, but the current
-ergonomics favour a single atomic write.
+ergonomics favor a single atomic write.
 """
 
 from __future__ import annotations

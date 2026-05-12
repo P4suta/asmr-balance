@@ -89,7 +89,7 @@ _TEMPLATE = """<!doctype html>
 """
 
 
-_VERDICT_COLOUR = {"OK": "#10b981", "WARN": "#f59e0b", "FAIL": "#ef4444"}
+_VERDICT_COLOR = {"OK": "#10b981", "WARN": "#f59e0b", "FAIL": "#ef4444"}
 
 
 def _fmt(value: float | None) -> str:
@@ -134,7 +134,7 @@ class HtmlSink:
         template = env.from_string(_TEMPLATE)
         x_labels = [Path(r["meta.file_path"]).name for r in self._rows]
         y_values = [r["loudness.delta_lu"] for r in self._rows]
-        colours = [_VERDICT_COLOUR.get(r["verdict"], "#6b7280") for r in self._rows]
+        colors = [_VERDICT_COLOR.get(r["verdict"], "#6b7280") for r in self._rows]
         html = template.render(
             rows=self._rows,
             count_ok=sum(1 for r in self._rows if r["verdict"] == "OK"),
@@ -142,7 +142,7 @@ class HtmlSink:
             count_fail=sum(1 for r in self._rows if r["verdict"] == "FAIL"),
             chart_x=x_labels,
             chart_y=[v if v is not None and v == v else 0.0 for v in y_values],
-            chart_color=colours,
+            chart_color=colors,
         )
         Path(self.path).write_text(html, encoding="utf-8")
         self._opened = False

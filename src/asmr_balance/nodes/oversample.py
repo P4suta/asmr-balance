@@ -11,7 +11,7 @@ phase ``k ∈ {0,1,2,3}`` produces one output sample ``y[4n+k]``:
 where ``T = ceil(L_h / L)`` is the per-phase tap count.
 
 We design the prototype 49-tap FIR via the Kaiser window with ``β = 8.0``
-(>= 70 dB stopband attenuation) and a cutoff of ``0.95 / 4`` normalised
+(>= 70 dB stopband attenuation) and a cutoff of ``0.95 / 4`` normalized
 frequency. The 49 taps cleanly decompose into four polyphase branches; padding
 to 52 taps gives a clean ``T = 13`` per phase.
 

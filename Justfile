@@ -1,5 +1,16 @@
-# asmr-balance — all recipes route through `docker compose run`
-# Host-side ripgrep is used for defensive grep (rg is User-environment global).
+# asmr-balance — all recipes route through `docker compose run` so they
+# reproduce CI exactly on any developer machine.
+#
+# Categories:
+#   bootstrap   …  one-shot env setup, docker build, hook install
+#   fmt / lint  …  static checks (ruff / basedpyright / bandit / vulture / typos)
+#   test       …  pytest matrix
+#   run        …  CLI shortcuts (scan, inspect, schema)
+#   docs/release …  documentation + release tooling
+#   hooks      …  Lefthook + pre-commit management
+#   ci          …  aggregate everything
+#
+# Naming convention: kebab-case (matches just's default).
 
 set shell := ["bash", "-cu"]
 set dotenv-load := true
@@ -12,18 +23,19 @@ default:
 
 # --- bootstrap --------------------------------------------------------
 
-bootstrap:
-    docker compose build
+# Build the image, install Python deps, and wire up git hooks.
+bootstrap: docker-build hooks-install
     {{DC}} uv sync --all-groups
-    {{DC}} uv run pre-commit install --install-hooks
-    {{DC}} uv run pre-commit install --hook-type commit-msg
 
-# --- format / lint ----------------------------------------------------
+docker-build:
+    docker compose build
+
+# --- fmt / lint -------------------------------------------------------
 
 fmt:
     {{DC}} uv run ruff format .
 
-lint: lint-static lint-defensive
+lint: lint-static lint-defensive typos
 
 lint-static:
     {{DC}} uv run ruff check .
@@ -36,16 +48,20 @@ lint-defensive:
     @echo "→ defensive grep gates (host rg)"
     @! rg -nP '^\s*print\(' src/ tests/ || (echo "print() forbidden — use structlog" && exit 1)
     @! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || (echo "TODO must include (#issue)" && exit 1)
-    @! rg -nP '#\s*type:\s*ignore(?!\[[\w,-]+\])' src/ || (echo "# type: ignore must specify rule code" && exit 1)
-    @! rg -nP '#\s*noqa(?!:\s*\w+)' src/ || (echo "# noqa must specify rule code" && exit 1)
+    @! rg -nP '#\s*type:\s*ignore' src/asmr_balance/ || (echo "type: ignore forbidden in src/" && exit 1)
+    @! rg -nP '#\s*noqa(?!:\s*\w+)?' src/asmr_balance/ || (echo "noqa without code forbidden" && exit 1)
     @! rg -nP '^\s*except\s*:' src/ || (echo "bare except forbidden" && exit 1)
     @! rg -nP '\beval\(|\bexec\(' src/ || (echo "eval/exec forbidden" && exit 1)
     @! rg -nP 'continue-on-error:\s*true' .github/ || (echo "continue-on-error forbidden" && exit 1)
     @! rg -nP '\b__import__\(' src/ || (echo "dynamic __import__ forbidden" && exit 1)
+    @! rg -nP '\.(z_blocks|_acc_l|_acc_r|_zi_l|_zi_r)\b' src/ || (echo "no private DSP state access" && exit 1)
     @echo "✓ defensive gates passed"
 
-upgrade-hooks:
-    {{DC}} uv run pre-commit autoupdate
+# Run typos against the whole repo via the pre-commit hook (so the binary is
+# managed by pre-commit's cache — no need to install crate-ci/typos on the
+# host or in the project image).
+typos:
+    {{DC}} uv run pre-commit run typos --all-files
 
 # --- test -------------------------------------------------------------
 
@@ -76,14 +92,30 @@ bench:
 
 # --- run --------------------------------------------------------------
 
-scan PATH:
-    {{DC}} uv run asmr-balance scan {{PATH}}
+scan PATH *FLAGS:
+    {{DC}} uv run asmr-balance scan {{PATH}} {{FLAGS}}
 
-inspect FILE:
-    {{DC}} uv run asmr-balance inspect {{FILE}}
+inspect FILE *FLAGS:
+    {{DC}} uv run asmr-balance inspect {{FILE}} {{FLAGS}}
 
-schema:
-    {{DC}} uv run asmr-balance schema
+schema *FLAGS:
+    {{DC}} uv run asmr-balance schema {{FLAGS}}
+
+# --- hooks (Lefthook + pre-commit) -----------------------------------
+
+# Install both Lefthook (fast, parallel) and pre-commit (CI-canonical) hooks.
+hooks-install:
+    @echo "→ installing pre-commit hooks"
+    {{DC}} uv run pre-commit install --install-hooks
+    {{DC}} uv run pre-commit install --hook-type commit-msg
+    @echo "→ installing lefthook hooks (host)"
+    @command -v lefthook >/dev/null 2>&1 && lefthook install || echo "  (lefthook not installed — run 'mise use -g lefthook@latest' to enable)"
+
+# Alias for the umbrella hooks command.
+hooks: hooks-install
+
+upgrade-hooks:
+    {{DC}} uv run pre-commit autoupdate
 
 # --- docs / release ---------------------------------------------------
 
@@ -101,6 +133,10 @@ sbom:
 
 ci: lint cov prop regression e2e audit
     @echo "✓ all gates green"
+
+# Quick developer-loop check: format + lint + fast tests + typos.
+dev: fmt lint-static lint-defensive typos test
+    @echo "✓ dev gate green"
 
 # --- maintenance ------------------------------------------------------
 

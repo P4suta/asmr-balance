@@ -1,0 +1,42 @@
+# Lefthook config — modern parallel git hooks (alternative to pre-commit).
+#
+# Lefthook runs commands in parallel by default and is significantly faster
+# than pre-commit for the lint matrix on this project. We keep pre-commit
+# alongside it because some upstream linters publish only pre-commit-mirror
+# revs (e.g. basedpyright). Both can be installed; lefthook is the day-to-day
+# developer-loop tool and pre-commit is the canonical CI gate.
+#
+# Install: `just lefthook-install` (or `lefthook install`).
+#
+# All commands run inside the project Docker image via `just`, so the host
+# only needs `lefthook` itself on PATH (mise: `mise use -g lefthook@latest`).
+
+pre-commit:
+  parallel: true
+  commands:
+    typos:
+      run: just typos
+    ruff-format:
+      glob: "*.{py,pyi}"
+      run: just fmt
+      stage_fixed: true
+    ruff-lint:
+      glob: "*.{py,pyi}"
+      run: just lint-static
+    defensive-grep:
+      run: just lint-defensive
+    secrets:
+      run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --no-banner
+
+commit-msg:
+  commands:
+    conventional:
+      run: docker run --rm -i ghcr.io/compilerla/conventional-pre-commit:v3.4.0 feat fix perf refactor style test build ci docs chore revert {1}
+
+pre-push:
+  parallel: false
+  commands:
+    coverage:
+      run: just cov
+    parity:
+      run: just regression

@@ -27,10 +27,9 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
-    rev: 1.39.4
-    hooks:
-      - id: basedpyright
+  # basedpyright is run via `just lint-static` (uv) — keeping it out of
+  # pre-commit avoids version drift between the mirror tag and the project
+  # pin in pyproject.toml.
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.9.3
@@ -43,6 +42,11 @@ repos:
     rev: v8.18.4
     hooks:
       - id: gitleaks
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.26.8
+    hooks:
+      - id: typos
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0

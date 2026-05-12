@@ -151,8 +151,8 @@ def result_to_flat_row(result: FileResult) -> dict[str, Any]:
     return row
 
 
-def _result_status_is_analysable(result: FileResult) -> bool:
-    return result.record.status is ScanStatus.ANALYSED
+def _result_status_is_analyzable(result: FileResult) -> bool:
+    return result.record.status is ScanStatus.ANALYZED
 
 
 def build_sinks(

@@ -27,7 +27,7 @@ def test_skipped_record_has_no_subtrees() -> None:
     assert rec.band is None
 
 
-def test_analysed_record_accepts_subtrees() -> None:
+def test_analyzed_record_accepts_subtrees() -> None:
     loud = LoudnessMetrics(
         lufs_i_stereo=-14.0,
         single_channel_lufs_l=-17.0,
@@ -37,7 +37,7 @@ def test_analysed_record_accepts_subtrees() -> None:
         delta_lu=0.0,
         delta_lu_ungated=0.0,
     )
-    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYSED, loudness=loud)
+    rec = MetricRecord(meta=_meta(), status=ScanStatus.ANALYZED, loudness=loud)
     assert rec.loudness is not None
     assert rec.loudness.lufs_i_stereo == -14.0
 
@@ -45,7 +45,7 @@ def test_analysed_record_accepts_subtrees() -> None:
 def test_metric_record_is_frozen() -> None:
     rec = MetricRecord(meta=_meta(), status=ScanStatus.SKIPPED)
     with pytest.raises(ValidationError):
-        rec.status = ScanStatus.ANALYSED  # type: ignore[misc]
+        rec.status = ScanStatus.ANALYZED  # type: ignore[misc]
 
 
 def test_metric_record_forbids_extra_fields() -> None:

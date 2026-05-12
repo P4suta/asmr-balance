@@ -2,7 +2,7 @@
 
 The :func:`open_source` function is the single boundary at which skip decisions
 are made (layout policy, mono detection). Its result is an algebraic data type
-:data:`SourceResult` of :class:`Source` (the file is analysable) or
+:data:`SourceResult` of :class:`Source` (the file is analyzable) or
 :class:`SkipMono` / :class:`SkipLayout` (the file is rejected with reason).
 Downstream code matches on the ADT exhaustively; ``basedpyright`` enforces
 totality via ``assert_never``.

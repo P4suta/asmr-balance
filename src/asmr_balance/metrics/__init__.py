@@ -4,7 +4,7 @@ Each module in this package contributes one or more typed
 :class:`~asmr_balance.algebra.reducer.Reducer` implementations together with
 the immutable subtree they emit. The pipeline composes the subtrees into the
 top-level :class:`~asmr_balance.metrics.record.MetricRecord` after all
-reducers have been finalised.
+reducers have been finalized.
 
 Modules:
 

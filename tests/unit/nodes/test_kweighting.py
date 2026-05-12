@@ -1,6 +1,6 @@
 """Tests for :mod:`asmr_balance.nodes.kweighting`.
 
-The SOS coefficients are the load-bearing artefact for BS.1770 parity. We
+The SOS coefficients are the load-bearing artifact for BS.1770 parity. We
 verify them against scipy reference designs and against the pyloudnorm
 canonical numbers via the regression suite (in ``tests/legacy``); here we just
 guarantee structural correctness and stage-typed plumbing.
@@ -54,7 +54,7 @@ def test_sos_rejects_invalid_sample_rate() -> None:
 
 def test_sos_rejects_subnyquist_sample_rate() -> None:
     with pytest.raises(ValueError, match="Nyquist"):
-        make_kweighting_sos(3000)  # below 2 * 1500 Hz pre-filter centre
+        make_kweighting_sos(3000)  # below 2 * 1500 Hz pre-filter center
 
 
 def test_filter_constructs_with_uninitialised_state() -> None:
@@ -115,7 +115,7 @@ def test_filter_dc_input_steady_state() -> None:
     f = KWeightingFilter(sample_rate=48000)
     out = f.process(RawBlock(block))[0]
     # After steady-state init at 0.5, RLB HPF rejects the constant.
-    # The first sample initialises to dc steady state; remaining outputs ≈ 0.
+    # The first sample initializes to dc steady state; remaining outputs ≈ 0.
     # We allow a transient near the boundary.
     tail = out[1000:]
     assert np.max(np.abs(tail)) < 1e-3

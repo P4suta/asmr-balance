@@ -6,7 +6,7 @@ rest of the codebase consumes:
 * :class:`~asmr_balance.algebra.reducer.Reducer` — streaming reducer protocol
 * :class:`~asmr_balance.algebra.semilattice.Verdict` — bounded join-semilattice
 * :class:`~asmr_balance.algebra.iir.UninitializedIIR` / :class:`~asmr_balance.algebra.iir.SteadyIIR`
-  — type-state IIR filter pair (steady-state initialisation encoded in types)
+  — type-state IIR filter pair (steady-state initialization encoded in types)
 
 All values defined here are frozen / hashable so that they remain safe to share
 across :mod:`concurrent.futures.ProcessPoolExecutor` boundaries (Phase D).

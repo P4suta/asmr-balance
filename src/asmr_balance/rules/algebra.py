@@ -41,7 +41,7 @@ class Rule[M, T](Protocol):
       instance attribute (e.g. :class:`BandBiasRule` parameterised by slot)
       rather than a :class:`typing.ClassVar`.
     * ``severity_ceiling`` — the maximum severity the rule can emit (used by
-      tooling to summarise registries).
+      tooling to summarize registries).
     * ``metric_path`` — name of the :class:`MetricRecord` attribute the rule
       consumes (e.g. ``"loudness"`` for :class:`LoudnessMetrics`).
     * ``threshold_path`` — name of the :class:`ThresholdSet` attribute the
@@ -67,11 +67,11 @@ RuleSet: TypeAlias = tuple[Rule[object, object], ...]
 def evaluate(rules: RuleSet, record: MetricRecord, thresholds: ThresholdSet) -> JudgeResult:
     """Apply every rule to the record and aggregate the verdict.
 
-    Records with status other than :attr:`ScanStatus.ANALYSED` produce an
+    Records with status other than :attr:`ScanStatus.ANALYZED` produce an
     empty flag tuple and a ``Verdict.OK`` verdict — the pipeline treats
     skipped / errored files as policy-neutral.
     """
-    if record.status is not ScanStatus.ANALYSED:
+    if record.status is not ScanStatus.ANALYZED:
         return JudgeResult(flags=(), verdict=Verdict.bottom())
 
     flags: list[Flag] = []

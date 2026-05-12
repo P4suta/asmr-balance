@@ -26,7 +26,7 @@ def fold_to_stereo(
 ) -> NDArray[np.float32] | None:
     """Fold an ``(N, n_channels)`` frame to ``(N, 2)`` per policy.
 
-    Returns ``None`` when the layout cannot be analysed for balance under the
+    Returns ``None`` when the layout cannot be analyzed for balance under the
     selected policy. The skip decision is settled at
     :func:`asmr_balance.source.open.open_source` boundary; this function
     cannot be reached at all when the source has already been rejected.

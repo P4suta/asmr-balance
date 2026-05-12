@@ -1,4 +1,4 @@
-"""``open_source`` — probe a file and decide analyse vs skip.
+"""``open_source`` — probe a file and decide analyze vs skip.
 
 The function is the *only* boundary at which the layout policy collapses into
 an ADT. The pipeline matches on the result exhaustively; new layout policies

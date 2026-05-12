@@ -1,19 +1,19 @@
 """Top-level metric record and file metadata.
 
 The :class:`MetricRecord` is the per-file forest of typed subtrees that
-:mod:`asmr_balance.scan.pipeline` assembles after all reducers finalise. Each
+:mod:`asmr_balance.scan.pipeline` assembles after all reducers finalize. Each
 subtree is owned by a single reducer (no shared state, no dict-keyed merge).
 
 A file can have one of three :class:`ScanStatus` outcomes:
 
-* ``ANALYSED`` — full :class:`MetricRecord` with all six subtrees populated.
+* ``ANALYZED`` — full :class:`MetricRecord` with all six subtrees populated.
 * ``SKIPPED`` — :class:`MetricRecord` with subtrees absent (``None``); the
   ``meta.skip_reason`` field tells why (mono input, unsupported layout, …).
 * ``ERRORED`` — same shape but with ``meta.skip_reason`` set to the error.
 
 The shape (one optional subtree per axis) is chosen so that downstream
 consumers (sinks, rules) can pattern-match on ``status`` and only access the
-subtrees when ``ANALYSED``.
+subtrees when ``ANALYZED``.
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ from asmr_balance.metrics.subtrees import (
 
 
 class ScanStatus(StrEnum):
-    """Outcome of analysing one file."""
+    """Outcome of analyzing one file."""
 
-    ANALYSED = "analysed"
+    ANALYZED = "analyzed"
     SKIPPED = "skipped"
     ERRORED = "errored"
 
