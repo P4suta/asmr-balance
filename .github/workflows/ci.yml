@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -33,7 +33,7 @@ jobs:
     name: Defensive grep gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Defensive gates
@@ -58,7 +58,7 @@ jobs:
     name: GHA workflow lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: rhysd/actionlint@main
 
   test:
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, defensive]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: System deps
         run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
       - uses: astral-sh/setup-uv@v7
@@ -91,7 +91,7 @@ jobs:
     name: pip-audit (CVE scan)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -107,7 +107,7 @@ jobs:
     # the *diff* the maintainer is about to merge.
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: trufflesecurity/trufflehog@main
