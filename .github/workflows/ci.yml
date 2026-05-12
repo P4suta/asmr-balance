@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, "redesign/**"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -85,6 +86,10 @@ jobs:
   mutate:
     name: Mutation testing (kill rate ≥ 80%)
     runs-on: ubuntu-latest
+    # mutmut at every commit doubles the CI bill on a 1900-statement project
+    # without telling us anything new most of the time. Run on demand via
+    # ``workflow_dispatch`` or weekly via ``schedule`` (see mutate.yml).
+    if: github.event_name == 'workflow_dispatch'
     needs: [test]
     steps:
       - uses: actions/checkout@v4
