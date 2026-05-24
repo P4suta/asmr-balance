@@ -9,7 +9,10 @@ def test_index_renders(client: TestClient) -> None:
     assert "text/html" in response.headers["content-type"]
     assert "asmr-balance" in response.text.lower()
     assert "inspect" in response.text.lower()
-    assert "/api/inspect/partial" in response.text
+    # Inspect form is JS-driven against the NDJSON stream endpoint now
+    # (no HTMX hx-* attrs left on the form).
+    assert 'id="inspect-form"' in response.text
+    assert "drop-zone__progress-bar" in response.text
 
 
 def test_static_css_served(client: TestClient) -> None:

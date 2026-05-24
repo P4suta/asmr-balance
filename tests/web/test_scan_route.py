@@ -11,23 +11,17 @@ from fastapi.testclient import TestClient
 from tests.fixtures.gen_fixtures import write_balanced_tone
 
 
-def _parse_sse(lines: Iterator[str]) -> list[dict[str, str]]:
-    events: list[dict[str, str]] = []
-    current: dict[str, str] = {}
-    for raw in lines:
-        line = raw.rstrip("\r")
-        if not line:
-            if current:
-                events.append(current)
-                current = {}
-            continue
-        if line.startswith("event:"):
-            current["event"] = line[len("event:") :].strip()
-        elif line.startswith("data:"):
-            current["data"] = line[len("data:") :].strip()
-    if current:
-        events.append(current)
-    return events
+def _parse_ndjson(lines: Iterator[str]) -> list[dict[str, object]]:
+    """One JSON object per non-empty line — same shape as ``InspectStream``."""
+    return [json.loads(raw) for raw in lines if raw.strip()]
+
+
+def _drain_stream(client: TestClient, job_id: str) -> list[dict[str, object]]:
+    """Block until the scan stream closes; return every frame in order."""
+    with client.stream("GET", f"/api/scan/{job_id}/stream") as resp:
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/x-ndjson")
+        return _parse_ndjson(resp.iter_lines())
 
 
 def _wait_until(predicate, timeout: float = 10.0) -> None:
@@ -72,25 +66,49 @@ def test_post_scan_404_on_missing(client: TestClient, library_root: Path) -> Non
     assert body["error"] == "LibraryPathError"
 
 
-def test_sse_streams_file_and_done_events(client: TestClient, library_root: Path) -> None:
+def test_stream_emits_file_frames_then_done(client: TestClient, library_root: Path) -> None:
     write_balanced_tone(library_root / "x.wav", duration_sec=0.5)
     start = client.post("/api/scan", json={"paths": ["x.wav"]})
     assert start.status_code == 200
     job_id = start.json()["job_id"]
 
-    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
-        assert resp.status_code == 200
-        events = _parse_sse(resp.iter_lines())
-
-    types = [e.get("event") for e in events]
+    events = _drain_stream(client, job_id)
+    types = [e["type"] for e in events]
     assert "file_done" in types
     assert types[-1] == "done"
 
-    file_event = next(e for e in events if e.get("event") == "file_done")
-    payload = json.loads(file_event["data"])
-    assert payload["sequence"] == 1
-    assert payload["total"] == 1
-    assert payload["source_name"] == "x.wav"
+    file_event = next(e for e in events if e["type"] == "file_done")
+    assert file_event["sequence"] == 1
+    assert file_event["total"] == 1
+    assert file_event["source_name"] == "x.wav"
+    assert file_event["verdict"] in {"OK", "WARN", "FAIL"}
+
+
+def test_stream_emits_failed_frame_when_job_crashes(
+    client: TestClient, library_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A mid-flight exception in ``scan_many`` surfaces as a terminal ``failed`` frame.
+
+    Mirrors the inspect-stream failure contract: HTTP stays 200, the in-band
+    frame carries the detail.
+    """
+    from asmr_balance.web.use_cases import scan as scan_module
+
+    def explode(*_args, **_kwargs):
+        message = "simulated scan crash"
+        raise RuntimeError(message)
+
+    monkeypatch.setattr(scan_module, "scan_many", explode)
+    write_balanced_tone(library_root / "x.wav", duration_sec=0.3)
+    start = client.post("/api/scan", json={"paths": ["x.wav"]})
+    job_id = start.json()["job_id"]
+
+    events = _drain_stream(client, job_id)
+    assert events[-1]["type"] == "failed"
+    detail = events[-1]["detail"]
+    assert isinstance(detail, str)
+    assert "simulated scan crash" in detail
+    assert "RuntimeError" in detail
 
 
 def test_get_scan_status_eventually_done(client: TestClient, library_root: Path) -> None:
@@ -98,10 +116,8 @@ def test_get_scan_status_eventually_done(client: TestClient, library_root: Path)
     start = client.post("/api/scan", json={"paths": ["x.wav"]})
     job_id = start.json()["job_id"]
 
-    # Drain the SSE first so we don't race the background task to completion.
-    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
-        for _ in resp.iter_lines():
-            pass
+    # Drain the stream first so we don't race the background task to completion.
+    _drain_stream(client, job_id)
 
     _wait_until(lambda: client.get(f"/api/scan/{job_id}").json()["state"] == "done")
     body = client.get(f"/api/scan/{job_id}").json()
@@ -126,9 +142,7 @@ def test_download_parquet_report(client: TestClient, library_root: Path) -> None
     write_balanced_tone(library_root / "x.wav", duration_sec=0.5)
     start = client.post("/api/scan", json={"paths": ["x.wav"]})
     job_id = start.json()["job_id"]
-    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
-        for _ in resp.iter_lines():
-            pass
+    _drain_stream(client, job_id)
     _wait_until(lambda: client.get(f"/api/scan/{job_id}").json()["state"] == "done")
 
     response = client.get(f"/api/scan/{job_id}/report.parquet")
@@ -144,9 +158,7 @@ def test_download_html_report(client: TestClient, library_root: Path) -> None:
     write_balanced_tone(library_root / "x.wav", duration_sec=0.5)
     start = client.post("/api/scan", json={"paths": ["x.wav"]})
     job_id = start.json()["job_id"]
-    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
-        for _ in resp.iter_lines():
-            pass
+    _drain_stream(client, job_id)
     _wait_until(lambda: client.get(f"/api/scan/{job_id}").json()["state"] == "done")
 
     response = client.get(f"/api/scan/{job_id}/report.html")
@@ -193,9 +205,7 @@ def test_download_report_404_when_file_missing(
     write_balanced_tone(library_root / "x.wav", duration_sec=0.5)
     start = client.post("/api/scan", json={"paths": ["x.wav"]})
     job_id = start.json()["job_id"]
-    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
-        for _ in resp.iter_lines():
-            pass
+    _drain_stream(client, job_id)
     _wait_until(lambda: client.get(f"/api/scan/{job_id}").json()["state"] == "done")
 
     (reports_root / job_id / "report.parquet").unlink()

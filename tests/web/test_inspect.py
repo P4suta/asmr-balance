@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -125,3 +128,136 @@ def test_inspect_missing_file_returns_validation_error(client: TestClient) -> No
     body = response.json()
     assert body["error"] == "RequestValidationError"
     assert body["context"]["errors"]
+
+
+# ---------------------------------------------------------------------------
+# /api/inspect/stream — NDJSON streaming inspect
+# ---------------------------------------------------------------------------
+def _consume_ndjson(client: TestClient, *, path: Path, filename: str) -> list[dict]:
+    """POST to /api/inspect/stream and parse the NDJSON body into events."""
+    with path.open("rb") as handle:
+        response = client.post(
+            "/api/inspect/stream",
+            files={"file": (filename, handle, "audio/wav")},
+        )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/x-ndjson")
+    return [json.loads(line) for line in response.text.splitlines() if line.strip()]
+
+
+def test_inspect_stream_emits_progress_then_done(client: TestClient, panned_wav: Path) -> None:
+    """Happy path: many ``progress`` frames, then one terminal ``done`` with HTML."""
+    events = _consume_ndjson(client, path=panned_wav, filename="panned.wav")
+    types = [e["type"] for e in events]
+    assert types[-1] == "done", f"last frame must be 'done', got {types[-1]}"
+    assert "progress" in types, "no progress frames emitted"
+    # Stages observed cover the pipeline boundaries.
+    stages = {e["stage"] for e in events if e["type"] == "progress"}
+    assert {"probe", "decode", "analyze", "assemble", "evaluate", "complete"} <= stages
+    # Terminal done frame contains the rendered HTML partial.
+    done = events[-1]
+    assert "diagnosis" in done["html"]
+    assert "dash--balance" in done["html"]
+
+
+def test_inspect_stream_unsupported_suffix_yields_failed_frame(
+    client: TestClient,
+) -> None:
+    """Pre-stream rejection surfaces as an in-band ``failed`` frame, not a 4xx."""
+    response = client.post(
+        "/api/inspect/stream",
+        files={"file": ("notes.txt", b"not audio", "text/plain")},
+    )
+    # The HTTP layer is already 200 (stream started). Failure is in-band.
+    assert response.status_code == 200
+    lines = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+    assert len(lines) == 1
+    assert lines[0]["type"] == "failed"
+    assert lines[0]["error"] == "UnsupportedAudioFormatError"
+    assert lines[0]["status"] == 415
+    assert lines[0]["context"]["suffix"] == ".txt"
+
+
+def test_inspect_stream_decode_error_yields_failed_frame(client: TestClient) -> None:
+    """Decoder failure mid-pipeline surfaces as a terminal ``failed`` frame."""
+    junk = b"\x00\x01\x02\x03" * 200
+    response = client.post(
+        "/api/inspect/stream",
+        files={"file": ("corrupt.wav", junk, "audio/wav")},
+    )
+    assert response.status_code == 200
+    lines = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+    # The pipeline catches the decode error and ScanStatus.ERRORED triggers
+    # AudioDecodeError after the worker thread finishes; some progress frames
+    # may have flushed first, but the terminal frame must be ``failed``.
+    assert lines[-1]["type"] == "failed"
+    assert lines[-1]["error"] == "AudioDecodeError"
+    assert lines[-1]["status"] == 422
+    assert lines[-1]["context"]["original_filename"] == "corrupt.wav"
+
+
+def test_inspect_stream_progress_payload_shape(client: TestClient, balanced_wav: Path) -> None:
+    """Every progress frame carries (stage, current, total) with sane values."""
+    events = _consume_ndjson(client, path=balanced_wav, filename="balanced.wav")
+    progress = [e for e in events if e["type"] == "progress"]
+    assert progress, "expected at least one progress frame"
+    for frame in progress:
+        assert isinstance(frame["stage"], str)
+        assert frame["stage"]
+        assert isinstance(frame["current"], int)
+        assert frame["current"] >= 0
+        assert isinstance(frame["total"], int)
+        assert frame["total"] >= 0
+        # current is bounded by total except for the "0/0 unknown" case.
+        assert frame["total"] == 0 or frame["current"] <= frame["total"]
+
+
+def test_inspect_stream_programmer_bug_is_framed_as_failed(
+    client: TestClient,
+    balanced_wav: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unexpected exceptions still produce a 500-shaped ``failed`` frame.
+
+    The detail must NOT leak the original exception message (matches the
+    unhandled-exception handler in :mod:`asmr_balance.web.errors`).
+    """
+
+    async def boom(_bytes: bytes, _filename: str | None) -> AsyncIterator[object]:
+        message = "simulated programmer bug"
+        raise RuntimeError(message)
+        yield  # pragma: no cover -- unreachable, satisfies async-generator signature
+
+    monkeypatch.setattr(
+        "asmr_balance.web.routes.inspect.perform_inspect_streaming",
+        boom,
+    )
+    with balanced_wav.open("rb") as handle:
+        response = client.post(
+            "/api/inspect/stream",
+            files={"file": ("x.wav", handle, "audio/wav")},
+        )
+    assert response.status_code == 200
+    lines = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+    assert lines == [
+        {
+            "type": "failed",
+            "error": "RuntimeError",
+            "detail": "internal server error",
+            "status": 500,
+            "context": {},
+        }
+    ]
+
+
+def test_inspect_stream_skipped_for_mono(client: TestClient, mono_wav: Path) -> None:
+    """Mono input → 'skipped' progress event + terminal 'done' frame.
+
+    Skipped is *not* a failure — listener UI still gets the diagnosis card
+    (with the 対象外 banner) so it can advise picking a stereo source.
+    """
+    events = _consume_ndjson(client, path=mono_wav, filename="mono.wav")
+    stages = [e["stage"] for e in events if e["type"] == "progress"]
+    assert "skipped" in stages
+    assert events[-1]["type"] == "done"
+    assert "対象外" in events[-1]["html"]

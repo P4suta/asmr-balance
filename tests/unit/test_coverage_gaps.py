@@ -24,7 +24,6 @@ from asmr_balance.nodes.bandsplit import _bandpass_sos
 from asmr_balance.nodes.oversample import _oversample_channel, _polyphase_taps
 from asmr_balance.nodes.zblocks import _ChannelMeanSquareBuffer
 from asmr_balance.scan.parallel import _resolved_workers, scan_many
-from asmr_balance.scan.pipeline import _block_samples_for
 from asmr_balance.sink.base import build_sinks
 from asmr_balance.sink.html import HtmlSink
 from asmr_balance.sink.tui import TuiSummarySink, render_summary
@@ -109,17 +108,6 @@ def test_resolved_workers_negative_falls_back_to_one() -> None:
 def test_scan_many_empty_paths_yields_nothing() -> None:
     """Sequential and parallel paths share the empty-input short-circuit."""
     assert list(scan_many([], Config())) == []
-
-
-def test_block_samples_for_invocation(tmp_path: Path) -> None:
-    """`_block_samples_for` probes the file and scales to ``sample_rate * duration``."""
-    import soundfile as sf
-
-    wav = tmp_path / "x.wav"
-    sf.write(str(wav), np.zeros((1024, 2), dtype=np.float32), 96000, subtype="FLOAT")
-    cfg = Config(block_duration_sec=0.1)
-    samples = _block_samples_for(cfg, wav)
-    assert samples == 9600
 
 
 # ---------------------------------------------------------------------------

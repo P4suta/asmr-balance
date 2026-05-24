@@ -3,7 +3,7 @@
 The use case is small but its sequencing is load-bearing:
 
 1. Resolve every requested rel-path into an absolute audio-file list
-   *up front* — knowing ``total_files`` immediately means the SSE stream
+   *up front* — knowing ``total_files`` immediately means the NDJSON stream
    can report ``(seq, total)`` from the first event.
 2. Register a fresh :class:`Job` with its own ``asyncio.Queue`` and per-job
    ``out_dir`` under ``reports_root()``.
@@ -12,7 +12,7 @@ The use case is small but its sequencing is load-bearing:
    :class:`ProcessPoolExecutor`; we force ``workers=1`` so sink callbacks
    run in this process — see ADR-0014).
 4. On completion (success or exception) push a terminal sentinel onto the
-   queue so the SSE handler closes cleanly.
+   queue so the streaming handler emits its terminal frame and closes.
 """
 
 from __future__ import annotations

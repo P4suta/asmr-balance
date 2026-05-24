@@ -33,7 +33,6 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "python-multipart",
-    "sse-starlette",
 ]
 
 [project.scripts]
@@ -163,9 +162,9 @@ combine-as-imports = true
 # ty (astral) — Rust-based type checker, replacing basedpyright
 # ----------------------------------------------------------------------
 # Rule levels mirror the previous basedpyright stance: third-party stub
-# gaps (polars / sse-starlette / starlette extras / jinja2 env globals) and
-# white-box frozen-dataclass test patterns are demoted to ``warn`` so they
-# don't fail CI, while real type bugs in our own surface stay ``error``.
+# gaps (polars / starlette extras / jinja2 env globals) and white-box
+# frozen-dataclass test patterns are demoted to ``warn`` so they don't fail
+# CI, while real type bugs in our own surface stay ``error``.
 [tool.ty.src]
 include = ["src", "tests"]
 exclude = [

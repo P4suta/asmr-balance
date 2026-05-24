@@ -35,11 +35,8 @@
     id="inspect-form"
     class="inspect-form"
     data-state="empty"
-    hx-post="/api/inspect/partial"
-    hx-target="#inspect-result-area"
-    hx-swap="innerHTML"
-    hx-encoding="multipart/form-data"
-    hx-disabled-elt="find button[type=submit]"
+    enctype="multipart/form-data"
+    novalidate
   >
     <label class="drop-zone" for="file-input">
       <input
@@ -69,9 +66,13 @@
         <div class="drop-zone__progress-meta">
           <div class="drop-zone__file-name"></div>
           <div class="drop-zone__progress-bar-wrap">
-            <div class="indeterminate-bar"><span></span></div>
+            <progress class="drop-zone__progress-bar" max="100" value="0"></progress>
           </div>
-          <div class="drop-zone__progress-status">解析中… <span class="drop-zone__elapsed">0.0s</span></div>
+          <div class="drop-zone__progress-status">
+            <span class="drop-zone__stage">準備中</span>
+            <span class="drop-zone__progress-pct">0%</span>
+            <span class="drop-zone__elapsed">0.0s</span>
+          </div>
         </div>
       </div>
       <div class="drop-zone__done" hidden>

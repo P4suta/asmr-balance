@@ -1,10 +1,13 @@
 // Three pieces of progressive enhancement glue:
 //   1. Tab switching (Inspect ↔ Scan).
-//   2. Drag-and-drop on the inspect drop-zone.
-//   3. Scan form submission + SSE consumer (per-file rows + live charts).
+//   2. Drag-and-drop on the inspect drop-zone + NDJSON streaming consumer
+//      (real per-stage progress bar driven by ``/api/inspect/stream``).
+//   3. Scan form submission + NDJSON streaming consumer (per-file rows +
+//      live charts, terminated by ``done`` or ``failed`` frame).
 //
-// Without JS the inspect form still works (HTMX); the scan form posts to
-// /api/scan but cannot render live progress.
+// JS is required for live progress on both forms. Without JS the inspect
+// form has no submit handler and shows nothing; use a curl POST against
+// /api/inspect or /api/inspect/partial instead.
 
 (() => {
   "use strict";
@@ -160,14 +163,47 @@
     });
   }
 
-  // Elapsed-time tick on the analyzing state (HTMX-driven).
-  let inspectTickHandle = null;
-  let inspectStartedAt = 0;
-  const stopInspectTick = () => {
-    if (inspectTickHandle !== null) {
-      clearInterval(inspectTickHandle);
-      inspectTickHandle = null;
-    }
+  // ---- inspect submit: NDJSON stream consumer ------------------------
+  // The backend pushes one JSON object per line:
+  //   {type:"progress", stage, current, total}
+  //   {type:"done",     html}
+  //   {type:"failed",   error, detail, status, context}
+  // Stages map 1:1 to the pipeline boundaries; "analyze" is ticked once
+  // per audio block so the bar moves smoothly on longer files.
+  const STAGE_LABELS = {
+    probe:    "ヘッダ解析",
+    decode:   "デコーダ準備",
+    analyze:  "音響解析",
+    assemble: "メトリクス集約",
+    evaluate: "ルール評価",
+    complete: "完了処理",
+    skipped:  "スキップ",
+  };
+  // Weight each stage in the overall progress bar so the bar reflects
+  // wall-clock-ish fraction, not just stage count. analyze dominates.
+  const STAGE_WEIGHTS = {
+    probe:    0.02,
+    decode:   0.03,
+    analyze:  0.85,
+    assemble: 0.04,
+    evaluate: 0.03,
+    complete: 0.03,
+    skipped:  1.00,
+  };
+  const STAGE_ORDER = ["probe", "decode", "analyze", "assemble", "evaluate", "complete"];
+
+  const setStageText = (text) => {
+    if (!inspectForm) return;
+    const el = inspectForm.querySelector(".drop-zone__stage");
+    if (el) el.textContent = text;
+  };
+  const setProgressBar = (pct) => {
+    if (!inspectForm) return;
+    const bar = inspectForm.querySelector(".drop-zone__progress-bar");
+    const txt = inspectForm.querySelector(".drop-zone__progress-pct");
+    const clamped = Math.max(0, Math.min(100, pct));
+    if (bar) bar.value = clamped;
+    if (txt) txt.textContent = `${clamped.toFixed(0)}%`;
   };
   const setElapsedText = (text) => {
     if (!inspectForm) return;
@@ -175,43 +211,142 @@
       el.textContent = text;
     });
   };
-  const tickInspect = () => {
-    setElapsedText(`${((performance.now() - inspectStartedAt) / 1000).toFixed(1)}s`);
+  const overallPct = (stage, current, total) => {
+    const idx = STAGE_ORDER.indexOf(stage);
+    if (idx < 0) return 0;  // unknown / skipped: leave bar alone
+    let pct = 0;
+    for (let i = 0; i < idx; i += 1) pct += (STAGE_WEIGHTS[STAGE_ORDER[i]] || 0) * 100;
+    const stageFrac = total > 0 ? current / total : 1;
+    pct += (STAGE_WEIGHTS[stage] || 0) * 100 * stageFrac;
+    return pct;
   };
-  document.body.addEventListener("htmx:beforeRequest", (e) => {
-    if (e.detail.elt === inspectForm) {
-      // Snapshot the file into the analyzing state.
+
+  if (inspectForm) {
+    inspectForm.addEventListener("submit", (e) => {
+      e.preventDefault();
       const file = inspectInput && inspectInput.files && inspectInput.files[0];
-      if (file) {
-        fillFileMeta(".drop-zone__progress", file);
-        fillFileMeta(".drop-zone__done", file);
+      if (!file) return;
+      runInspect(file);
+    });
+  }
+
+  async function runInspect(file) {
+    fillFileMeta(".drop-zone__progress", file);
+    fillFileMeta(".drop-zone__done", file);
+    setStageText("送信中");
+    setProgressBar(0);
+    setElapsedText("0.0s");
+    setState("analyzing");
+    if (inspectResultArea) inspectResultArea.innerHTML = "";
+
+    const startedAt = performance.now();
+    const tick = setInterval(() => {
+      setElapsedText(`${((performance.now() - startedAt) / 1000).toFixed(1)}s`);
+    }, 100);
+    const form = new FormData();
+    form.append("file", file);
+
+    let response;
+    try {
+      response = await fetch("/api/inspect/stream", { method: "POST", body: form });
+    } catch (err) {
+      clearInterval(tick);
+      if (inspectResultArea) {
+        inspectResultArea.innerHTML = renderError({
+          error: "NetworkError",
+          detail: String(err),
+        });
       }
-      inspectStartedAt = performance.now();
-      tickInspect();
-      inspectTickHandle = setInterval(tickInspect, 100);
-      setState("analyzing");
+      setState("ready");
+      return;
     }
-  });
-  document.body.addEventListener("htmx:afterRequest", (e) => {
-    if (e.detail.elt === inspectForm) {
-      stopInspectTick();
-      const elapsed = ((performance.now() - inspectStartedAt) / 1000).toFixed(2);
-      if (e.detail.successful) {
-        // Show total elapsed alongside the filename in the done card.
-        const file = inspectInput && inspectInput.files && inspectInput.files[0];
-        if (inspectForm) {
-          const doneCard = inspectForm.querySelector(".drop-zone__done");
-          if (doneCard && file) {
-            const detail = doneCard.querySelector(".drop-zone__file-detail");
-            if (detail) detail.textContent = `${formatBytes(file.size)} · 解析所要 ${elapsed}s`;
-          }
+
+    if (!response.body) {
+      clearInterval(tick);
+      if (inspectResultArea) {
+        inspectResultArea.innerHTML = renderError({
+          error: "StreamUnsupported",
+          detail: "ブラウザがストリーミング応答を扱えませんでした",
+        });
+      }
+      setState("ready");
+      return;
+    }
+
+    let terminalEvent = null;
+    try {
+      for await (const evt of ndjsonFrames(response.body)) {
+        if (evt.type === "progress") {
+          setStageText(STAGE_LABELS[evt.stage] || evt.stage);
+          setProgressBar(overallPct(evt.stage, evt.current, evt.total));
+        } else if (evt.type === "done" || evt.type === "failed") {
+          terminalEvent = evt;
+          break;
         }
-        setState("done");
-      } else {
-        setState("ready");
       }
+    } catch (err) {
+      clearInterval(tick);
+      if (inspectResultArea) {
+        inspectResultArea.innerHTML = renderError({
+          error: "StreamReadError",
+          detail: String(err),
+        });
+      }
+      setState("ready");
+      return;
     }
-  });
+    clearInterval(tick);
+
+    const elapsed = ((performance.now() - startedAt) / 1000).toFixed(2);
+    if (terminalEvent && terminalEvent.type === "done") {
+      if (inspectResultArea) inspectResultArea.innerHTML = terminalEvent.html;
+      setProgressBar(100);
+      setStageText("完了");
+      setElapsedText(`${elapsed}s`);
+      const doneCard = inspectForm && inspectForm.querySelector(".drop-zone__done");
+      if (doneCard) {
+        const detail = doneCard.querySelector(".drop-zone__file-detail");
+        if (detail) detail.textContent = `${formatBytes(file.size)} · 解析所要 ${elapsed}s`;
+      }
+      setState("done");
+    } else if (terminalEvent && terminalEvent.type === "failed") {
+      if (inspectResultArea) inspectResultArea.innerHTML = renderError(terminalEvent);
+      setState("ready");
+    } else {
+      // Stream closed without a terminal frame — treat as failure.
+      if (inspectResultArea) {
+        inspectResultArea.innerHTML = renderError({
+          error: "TruncatedStream",
+          detail: "解析ストリームが途中で切れました",
+        });
+      }
+      setState("ready");
+    }
+  }
+
+  // Generic NDJSON reader: yields parsed objects, one per line.
+  async function* ndjsonFrames(body) {
+    const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "";
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          if (buf.trim()) yield JSON.parse(buf);
+          return;
+        }
+        buf += value;
+        let idx;
+        while ((idx = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (line) yield JSON.parse(line);
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
 
   // ---- scan: POST + SSE consumer ------------------------------------
   const scanForm = document.getElementById("scan-form");
@@ -246,10 +381,10 @@
     }
     targetEl.innerHTML = renderProgressShell(data);
     initScanCharts(targetEl);
-    consumeSse(data.job_id, targetEl);
+    consumeScanStream(data.job_id, targetEl);
   }
 
-  function consumeSse(jobId, targetEl) {
+  async function consumeScanStream(jobId, targetEl) {
     const counts = { OK: 0, WARN: 0, FAIL: 0 };
     const startedAt = performance.now();
     const elapsedEl = targetEl.querySelector(".scan-elapsed");
@@ -259,29 +394,54 @@
       }
     }, 100);
     const finalElapsed = () => ((performance.now() - startedAt) / 1000).toFixed(2);
-    const sse = new EventSource(`/api/scan/${jobId}/events`);
-    sse.addEventListener("file_done", (e) => {
-      const payload = JSON.parse(e.data);
-      appendRow(targetEl, payload);
-      counts[payload.verdict] = (counts[payload.verdict] || 0) + 1;
-      updateVerdictDonut(targetEl, counts);
-      extendDeltaScatter(targetEl, payload);
-    });
-    sse.addEventListener("done", () => {
-      sse.close();
-      clearInterval(tickHandle);
-      if (elapsedEl) elapsedEl.textContent = `${finalElapsed()}s`;
-      finalize(targetEl, jobId);
-    });
-    sse.addEventListener("error", () => {
-      sse.close();
-      clearInterval(tickHandle);
+    const markFailed = (msg) => {
       const state = targetEl.querySelector(".scan-state");
       if (state) {
-        state.textContent = "sse error";
+        state.textContent = msg;
         state.className = "scan-state scan-state--failed";
       }
-    });
+    };
+
+    let response;
+    try {
+      response = await fetch(`/api/scan/${jobId}/stream`);
+    } catch (err) {
+      clearInterval(tickHandle);
+      markFailed(`network error: ${err}`);
+      return;
+    }
+    if (!response.ok || !response.body) {
+      clearInterval(tickHandle);
+      markFailed(`stream error: HTTP ${response.status}`);
+      return;
+    }
+    try {
+      for await (const evt of ndjsonFrames(response.body)) {
+        if (evt.type === "file_done") {
+          appendRow(targetEl, evt);
+          counts[evt.verdict] = (counts[evt.verdict] || 0) + 1;
+          updateVerdictDonut(targetEl, counts);
+          extendDeltaScatter(targetEl, evt);
+        } else if (evt.type === "done") {
+          clearInterval(tickHandle);
+          if (elapsedEl) elapsedEl.textContent = `${finalElapsed()}s`;
+          finalize(targetEl, jobId);
+          return;
+        } else if (evt.type === "failed") {
+          clearInterval(tickHandle);
+          if (elapsedEl) elapsedEl.textContent = `${finalElapsed()}s`;
+          markFailed(`failed: ${evt.detail}`);
+          return;
+        }
+      }
+    } catch (err) {
+      clearInterval(tickHandle);
+      markFailed(`stream read error: ${err}`);
+      return;
+    }
+    // Stream ended without a terminal frame — defensive fallback.
+    clearInterval(tickHandle);
+    markFailed("stream closed unexpectedly");
   }
 
   // ---- chart scaffolding (scan side) --------------------------------
