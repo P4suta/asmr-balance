@@ -107,9 +107,38 @@ button[type="submit"]:hover { filter: brightness(1.1); }
 
 .busy {
   display: none;
+  align-items: center;
+  gap: 0.45rem;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
-.busy.htmx-request { display: inline-block; }
+.busy.htmx-request { display: inline-flex; }
+.busy.htmx-request::before {
+  content: "";
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Reusable spinner glyph for client-rendered progress (scan tab). */
+.spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.4em;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -0.1em;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 .result-card {
   margin-top: 2rem;

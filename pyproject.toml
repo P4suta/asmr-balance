@@ -1,7 +1,7 @@
 [project]
 name = "asmr-balance"
 version = "1.0.0"
-description = "Multi-axis L/R balance scanner for ASMR audio/video files (ITU-R BS.1770 K-weighted, streaming, Parquet/HTML/TUI reports)."
+description = "Listener-facing ASMR pre-listening checker — diagnoses L/R balance, loudness, true-peak / clipping risk, and band-level bias so listeners pick the right playback gear and volume (ITU-R BS.1770 based; Parquet/HTML/TUI reports)."
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }

@@ -9,14 +9,14 @@
     role="tab"
     aria-controls="inspect-pane"
     data-tab="inspect"
-  >Inspect</button>
+  >1 ファイル視聴チェック</button>
   <button
     type="button"
     class="tab"
     role="tab"
     aria-controls="scan-pane"
     data-tab="scan"
-  >Scan</button>
+  >ライブラリ一括</button>
 </nav>
 
 <section
@@ -25,8 +25,11 @@
   role="tabpanel"
   aria-labelledby="inspect-heading"
 >
-  <h2 id="inspect-heading">Inspect — 1 file</h2>
-  <p class="hint">音声ファイル (.wav / .flac / .mp3 / .mp4 / …) を選択またはドラッグ &amp; ドロップ。</p>
+  <h2 id="inspect-heading">視聴前に 1 ファイルチェック</h2>
+  <p class="hint">
+    これから聴く音源を解析して、左右バランス・音量・再生機材への適性を診断します。
+    (.wav / .flac / .mp3 / .mp4 / …)
+  </p>
 
   <form
     id="inspect-form"
@@ -62,8 +65,9 @@
   aria-labelledby="scan-heading"
   hidden
 >
-  <h2 id="scan-heading">Scan — library</h2>
+  <h2 id="scan-heading">ライブラリをまとめてチェック</h2>
   <p class="hint">
+    視聴予定のライブラリを一括解析。
     <code>/library</code> 配下の rel-path を指定 (ファイル or ディレクトリ)。
     例: <code>album</code>, <code>artist/EP01</code>, <code>single.wav</code>。
   </p>

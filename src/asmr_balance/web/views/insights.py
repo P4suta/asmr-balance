@@ -1,20 +1,21 @@
-"""Domain → semantic insight projection.
+"""Domain → semantic insight projection (listener perspective).
 
-The user-visible value of this tool is *understanding*, not *numbers*. Raw
-metrics like ``delta_lu = +12.0`` are domain facts with no meaning to a
-producer / listener; this module is the single place that translates them
-into:
+The user is a **listener** about to consume the file, not the producer.
+Every label / reference frame is phrased in viewing terms (「BGM 向け」
+「就寝視聴」「イヤホン推奨」 etc.), not production terms (「DAW」「ミック
+ス」「Limiter」). Same raw data, listener-friendly framing.
 
-* a **categorical label** ("極端に左寄り", "ASMR 推奨レンジ内", "クリップ確実")
-* a **positional offset** for visual gauges ("46% to the L on a [-100, +100]
-  axis", "headroom 65% safe / 35% warn zone")
-* a **reference frame** ("目安: ±3 LU 以内 / あなた: +12 LU")
+Each label is paired with:
+
+* a **categorical label** for the listener experience
+  (「ほぼモノラル」「囁き型」「音割れ警告」)
+* a **positional offset** for visual gauges (-100..+100 pan axis,
+  0..100% headroom fill)
+* a **reference frame** comparing to typical ASMR / streaming targets
 * a **severity** so the UI can color-code
 
-The four bundles (:class:`StereoBalanceInsight`, :class:`LoudnessInsight`,
-:class:`HeadroomInsight`, :class:`ToneBalanceInsight`) are composed into
-:class:`InspectInsights`. Each builder is pure: it takes the
-:class:`MetricRecord` (and nothing else) and returns a frozen dataclass.
+The four bundles compose into :class:`InspectInsights`; each builder is
+a pure function of :class:`MetricRecord`.
 
 Strings are in 日本語. i18n is Phase 4.
 """
@@ -120,32 +121,32 @@ def _pan_label(delta_lu: float) -> tuple[str, Verdict]:
     abs_d = abs(delta_lu)
     side = "右" if delta_lu < 0 else "左"
     if abs_d < 1.5:
-        return ("中央バランス", Verdict.OK)
+        return ("中央でバランス良く聞こえます", Verdict.OK)
     if abs_d < 3:
-        return (f"わずかに{side}寄り", Verdict.OK)
+        return (f"わずかに{side}耳寄り", Verdict.OK)
     if abs_d < 6:
-        return (f"{side}に偏っています", Verdict.WARN)
-    return (f"極端に{side}寄り", Verdict.FAIL)
+        return (f"{side}耳の方が大きく聞こえます", Verdict.WARN)
+    return (f"極端に{side}耳寄り (片耳に集中)", Verdict.FAIL)
 
 
 def _stability_label(p95_lu: float, t_max_sec: float) -> tuple[str, Verdict]:
     if not math.isfinite(p95_lu):
         return ("計測不能", Verdict.WARN)
     if p95_lu < 3:
-        return ("全体的に安定", Verdict.OK)
+        return ("定位が安定 (動かない)", Verdict.OK)
     if p95_lu < 6:
-        return (f"局所的にゆらぎあり (最大 {t_max_sec:.1f}s 付近)", Verdict.WARN)
-    return (f"持続的に大きくゆらぐ (p95 {p95_lu:.1f} LU)", Verdict.FAIL)
+        return (f"{t_max_sec:.1f}s 付近で音像が大きく動きます", Verdict.WARN)
+    return (f"終始定位が動き続けます (p95 {p95_lu:.1f} LU)", Verdict.FAIL)
 
 
 def _image_label(pearson: float, ms_ratio_db: float) -> tuple[str, Verdict]:
     if math.isfinite(pearson) and pearson > 0.95:
-        return ("ほぼモノラル (Side 成分なし)", Verdict.WARN)
+        return ("実質モノラル (binaural には不向き)", Verdict.WARN)
     if math.isfinite(ms_ratio_db) and ms_ratio_db > 12:
-        return ("立体感が薄い (Side が痩せている)", Verdict.WARN)
+        return ("立体感が薄め (中央寄りで聞こえる)", Verdict.WARN)
     if math.isfinite(ms_ratio_db) and ms_ratio_db > 6:
-        return ("ステレオ感あり", Verdict.OK)
-    return ("広いステレオ感", Verdict.OK)
+        return ("自然なステレオ感", Verdict.OK)
+    return ("広い立体感 (binaural 視聴に向く)", Verdict.OK)
 
 
 def derive_stereo_balance(record: MetricRecord) -> StereoBalanceInsight | None:
@@ -181,40 +182,40 @@ def derive_stereo_balance(record: MetricRecord) -> StereoBalanceInsight | None:
 # ----------------------------------------------------------------------
 def _loudness_target_label(lufs: float) -> tuple[str, Verdict, str]:
     """Where this file sits vs streaming + ASMR-typical loudness targets."""
-    reference = "ASMR 推奨 −23 LUFS / Apple Podcasts −16 / Spotify −14 / ラウドネス戦争 ≥ −10"
+    reference = "ASMR 一般 ≈ −23 LUFS (静かめ) / Apple Podcasts −16 / Spotify −14"
     if not math.isfinite(lufs):
         return ("計測不能", Verdict.WARN, reference)
     if lufs < -30:
-        return ("非常に静か (静寂レベル)", Verdict.WARN, reference)
+        return ("非常に静か — 通常の視聴音量だと小さすぎるかも", Verdict.WARN, reference)
     if -30 <= lufs <= -18:
-        return ("ASMR 推奨レンジ内", Verdict.OK, reference)
+        return ("ASMR らしい静かめの音量 — 耳元の囁き感が出ます", Verdict.OK, reference)
     if -18 < lufs <= -12:
-        return ("ポッドキャスト/配信向け (ASMR としては大きめ)", Verdict.WARN, reference)
-    return ("大きすぎ (ラウドネス戦争域、聴き疲れの原因)", Verdict.FAIL, reference)
+        return ("音量大きめ — 配信動画くらいの音量感", Verdict.WARN, reference)
+    return ("音量が非常に大きい — 長時間視聴で聴き疲れ・耳疲労に注意", Verdict.FAIL, reference)
 
 
 def _dynamics_label(lra_lu: float) -> tuple[str, Verdict, str]:
-    reference = "目安: ASMR は 12–18 LU が典型 / 配信音楽は 6–10 LU が多い"
+    reference = "目安: 一定 BGM ≈ 6 LU 以下 / ASMR ≈ 12–18 LU / 大きい"
     if not math.isfinite(lra_lu):
         return ("計測不能", Verdict.WARN, reference)
     if lra_lu < 6:
-        return ("圧縮されている (抑揚が乏しい)", Verdict.WARN, reference)
+        return ("ほぼ一定の音量 — 就寝視聴・BGM 向き", Verdict.OK, reference)
     if lra_lu < 12:
-        return ("普通の抑揚", Verdict.OK, reference)
+        return ("適度な抑揚", Verdict.OK, reference)
     if lra_lu < 20:
-        return ("豊かな抑揚 (ASMR らしい)", Verdict.OK, reference)
-    return ("極端なダイナミクス (再生環境次第で聴きづらい)", Verdict.WARN, reference)
+        return ("抑揚が豊か (ASMR らしい強弱)", Verdict.OK, reference)
+    return ("強弱の差が極端に大きい — ボリューム調整が忙しいかも", Verdict.WARN, reference)
 
 
 def _psr_label(psr_db: float) -> tuple[str, Verdict, str]:
-    reference = "PSR = peak − loudness。高いほど「静かなのに時々大きい」音"
+    reference = "高いほど「静かな中に時々大きい音」が混じる構成"
     if not math.isfinite(psr_db):
         return ("計測不能", Verdict.WARN, reference)
     if psr_db < 12:
-        return ("圧縮された音 (音楽/放送的)", Verdict.OK, reference)
+        return ("圧縮された音 — 音楽 / 放送的 (ASMR としては大味)", Verdict.OK, reference)
     if psr_db < 20:
-        return ("会話程度の自然さ", Verdict.OK, reference)
-    return ("囁き型 (典型的 ASMR / 静寂と耳元の対比強)", Verdict.OK, reference)
+        return ("会話程度の自然な強弱 — リラックス時の BGM 視聴向き", Verdict.OK, reference)
+    return ("囁き型 — 静かな部屋でじっくり視聴向き", Verdict.OK, reference)
 
 
 def derive_loudness(record: MetricRecord) -> LoudnessInsight | None:
@@ -249,12 +250,12 @@ def _headroom_label(dbtp: float) -> tuple[str, Verdict]:
     if not math.isfinite(dbtp):
         return ("計測不能", Verdict.WARN)
     if dbtp >= 0:
-        return ("クリップ確実 (再生機材で歪み)", Verdict.FAIL)
+        return ("音割れ確実 — 再生機材で確実に歪んで聞こえます", Verdict.FAIL)
     if dbtp >= -1:
-        return ("クリップ警告ゾーン", Verdict.WARN)
+        return ("音割れの可能性 — 安い機材や大音量で歪むかも", Verdict.WARN)
     if dbtp >= -3:
-        return ("ヘッドルームやや少なめ", Verdict.WARN)
-    return ("安全圏", Verdict.OK)
+        return ("音量大きめ — 機材によっては窮屈な印象に", Verdict.WARN)
+    return ("どんな機材でも安心して再生できます", Verdict.OK)
 
 
 def _channel_status_label(record: MetricRecord) -> tuple[str, Verdict]:
@@ -264,12 +265,12 @@ def _channel_status_label(record: MetricRecord) -> tuple[str, Verdict]:
     bad_l = not math.isfinite(loud.single_channel_lufs_l)
     bad_r = not math.isfinite(loud.single_channel_lufs_r)
     if bad_l and bad_r:
-        return ("両チャンネル無音 (致命的)", Verdict.FAIL)
+        return ("両チャンネル無音 — 視聴不可", Verdict.FAIL)
     if bad_l:
-        return ("L チャンネル無音", Verdict.FAIL)
+        return ("L チャンネルが無音 — 不良品の可能性", Verdict.FAIL)
     if bad_r:
-        return ("R チャンネル無音", Verdict.FAIL)
-    return ("両チャンネル稼働", Verdict.OK)
+        return ("R チャンネルが無音 — 不良品の可能性", Verdict.FAIL)
+    return ("両チャンネル正常", Verdict.OK)
 
 
 def derive_headroom(record: MetricRecord) -> HeadroomInsight | None:
@@ -319,9 +320,9 @@ def _tone_severity(abs_db: float) -> Verdict:
 
 def _tone_label(name: str, value_db: float, severity: Verdict) -> str:
     if severity is Verdict.OK:
-        return f"{name}バランス OK"
-    side = "L" if value_db > 0 else "R"
-    return f"{name} {side} 偏り ({abs(value_db):.1f} dB)"
+        return f"{name}は左右バランス良く聞こえます"
+    side = "左" if value_db > 0 else "右"
+    return f"{name}が{side}耳寄りに聞こえます ({abs(value_db):.1f} dB 差)"
 
 
 def derive_tone(record: MetricRecord) -> ToneBalanceInsight | None:
@@ -359,8 +360,8 @@ def derive_tone(record: MetricRecord) -> ToneBalanceInsight | None:
         most_label = None
         most_severity = Verdict.OK
     else:
-        side = "L" if worst[1] > 0 else "R"
-        most_label = f"{worst[0]} で {side} が {worst[2]:.1f} dB 強い"
+        side = "左" if worst[1] > 0 else "右"
+        most_label = f"{worst[0]} 帯で {side}耳側が {worst[2]:.1f} dB 大きい"
         most_severity = _tone_severity(worst[2])
 
     return ToneBalanceInsight(

@@ -1,12 +1,13 @@
-"""Diagnosis view — turn rule firings into user-facing narrative.
+"""Diagnosis view — turn rule firings into listener-facing narrative.
 
-The Web UI's value proposition is *interpretation*, not just data display.
-Raw metrics (``|ΔLU|=12.00 ≥ 6.0``) are a domain fact; this module is the
-sole place that translates each rule firing into:
+The Web UI's audience is the **listener** (the person about to watch /
+listen to an ASMR file), not the producer who made it. Every finding is
+phrased in terms the listener can act on:
 
-* a **title** — what the issue *is*, in one sentence
-* an **explanation** — why it matters for ASMR production / listening
-* a **recommendation** — what to do about it
+* a **title** — what they will experience while listening
+* an **explanation** — why this matters for the viewing experience
+* a **recommendation** — equipment / volume / posture advice (NOT mix
+  advice — the listener can't re-record the file)
 
 Aggregated into a :class:`Diagnosis` for the inspect partial, the result
 puts the human-readable headline at the top and demotes raw numbers to a
@@ -34,7 +35,7 @@ from asmr_balance.scan.pipeline import FileResult
 # ----------------------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class Finding:
-    """One user-facing issue derived from a single :class:`Flag`."""
+    """One listener-facing issue derived from a single :class:`Flag`."""
 
     title: str
     severity: Verdict
@@ -56,7 +57,7 @@ class Diagnosis:
 
 
 # ----------------------------------------------------------------------
-# Per-flag interpretation
+# Per-flag interpretation (listener perspective)
 # ----------------------------------------------------------------------
 def _fmt_lu(value: float) -> str:
     if not math.isfinite(value):
@@ -68,19 +69,20 @@ def _build_lr_balance(flag: Flag, record: MetricRecord) -> Finding:
     loud = record.loudness
     delta = loud.delta_lu if loud is not None else float("nan")
     abs_delta = abs(delta) if math.isfinite(delta) else float("nan")
-    direction = "左 (L) が大きい" if delta > 0 else "右 (R) が大きい"
+    louder, quieter = ("左", "右") if delta > 0 else ("右", "左")
     return Finding(
-        title=f"左右の平均音量が偏っています ({direction})",
+        title=f"{louder}耳の音が{quieter}耳より大きく聞こえます",
         severity=flag.severity,
         explanation=(
-            f"ファイル全体の平均で L − R が {_fmt_lu(delta)} 偏っています。"
-            "通常のステレオミックスは ±3 LU 程度に収まるのが目安で、"
-            f"今回はその {abs_delta:.1f} LU と大きく外れています。"
-            "片耳だけが大きい/小さい違和感がリスナーにそのまま伝わります。"
+            f"録音そのものに左右の音量差 {_fmt_lu(delta)} があります "
+            f"(目安: ±3 LU 以内)。実測 {abs_delta:.1f} LU はリスナー側で"
+            "「片耳だけうるさい / 小さい」とはっきり違和感を感じるレベルです。"
+            "再生機材の問題ではなく音源側の特性なので、"
+            "イヤホンの左右を入れ替えても改善しません。"
         ),
         recommendation=(
-            "DAW のパン/ゲインを見直すか、収録時のマイク位置 (片側にだけ近い等) と"
-            "ケーブル/インターフェイスの両チャンネルレベルを確認してください。"
+            "違和感が強ければ、片イヤホンに切り替えるか別の音源を試してみてください。"
+            "意図的な定位演出の可能性もあります (例: 右側からの囁き)。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -91,17 +93,17 @@ def _build_local_bias(flag: Flag, record: MetricRecord) -> Finding:
     p95 = sliding.p95_lu if sliding is not None else float("nan")
     t_max = sliding.t_max_sec if sliding is not None else float("nan")
     return Finding(
-        title="一部の区間で L/R が偏り続けています",
+        title="特定の場面で音が片耳に強く偏る瞬間があります",
         severity=flag.severity,
         explanation=(
-            "全体平均では均衡でも、1 秒ウィンドウで見たときに局所的に持続的な"
-            f"偏りが出ています (p95 ΔLU = {_fmt_lu(p95)})。"
-            "ASMR では「囁きが片耳に寄ったまま長い」「タッピング音源で耳元位置が偏る」"
-            "といった現象として聞こえます。"
+            f"全体平均は均衡でも、{t_max:.1f}s 付近で音像が大きく片側へ寄ります "
+            f"(局所最大 ΔLU = {_fmt_lu(p95)})。"
+            "ASMR では「囁きが急に片耳に寄った」「タッピング音の位置が突然移った」"
+            "と感じる瞬間に相当します。"
         ),
         recommendation=(
-            f"最大偏差は {t_max:.1f}s 付近です。その周辺の素材を中心にパン/位置"
-            "オートメーション、もしくは ASMR モチーフ間の左右配置を確認してください。"
+            "意図的な定位演出 (例: 耳元への移動) の可能性が高いです。"
+            "違和感が強ければその秒数前後だけスキップして視聴することもできます。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -111,18 +113,17 @@ def _build_pseudo_mono(flag: Flag, record: MetricRecord) -> Finding:
     corr = record.correlation
     pearson = corr.pearson_r if corr is not None else float("nan")
     return Finding(
-        title="ステレオなのに L=R に近い (擬似モノラル)",
+        title="ステレオ表記ですが実質モノラルです",
         severity=flag.severity,
         explanation=(
-            f"左右波形の相関係数が {pearson:.3f} と非常に高く、"
-            "ファイルはステレオ chunk ですが聴感上はほぼモノラルです。"
-            "意図的な dual-mono であれば問題ありませんが、"
-            "binaural / 立体 ASMR を意図していた場合は録音/書き出し設定のミスが疑われます。"
+            f"左右の波形相関が {pearson:.3f} と極端に高く、"
+            "技術的にはステレオファイルですが聴感上はモノラルと変わりません。"
+            "binaural / 立体 ASMR とうたわれていた場合、"
+            "期待した立体感や耳元感は得られない可能性が高いです。"
         ),
         recommendation=(
-            "Dual-mono が意図通りなら無視可。"
-            "ステレオを期待していた場合は、収録時のマイクペア接続、"
-            "ステレオバスルーティング、書き出し時の channel layout を確認してください。"
+            "dual-mono として意図された作品なら問題ありません。"
+            "binaural 視聴を期待していたなら、別の音源を探した方が満足度が高いです。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -130,17 +131,17 @@ def _build_pseudo_mono(flag: Flag, record: MetricRecord) -> Finding:
 
 def _build_phase_inv(flag: Flag, _record: MetricRecord) -> Finding:
     return Finding(
-        title="低域 (<300 Hz) で位相反転が疑われます",
+        title="スピーカー再生で低音がスカスカに聞こえる可能性",
         severity=flag.severity,
         explanation=(
-            "低域帯の L/R 位相相関が負の値です。"
-            "スピーカー再生では低域がキャンセルされ「スカスカに」聞こえ、"
-            "ヘッドホン再生では音像が頭の外側にゆらぐ違和感が生じます。"
+            "低音域 (< 300 Hz) の L/R が逆位相気味になっています。"
+            "スピーカー再生では左右の低音が空中で打ち消し合い、"
+            "「ベース感が抜けて軽く聞こえる」状態になります。"
+            "ヘッドホン / イヤホンでは耳元で物理的に分離されるので問題は起きません。"
         ),
         recommendation=(
-            "ケーブルの極性 (+/−) 逆挿し、"
-            "DAW の Phase Invert スイッチ、"
-            "L/R 入力の取り違えを順に確認してください。"
+            "**イヤホン / ヘッドホン視聴を推奨**。"
+            "スピーカーで聴くなら、低音が薄い印象になることを了承しておいてください。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -148,42 +149,44 @@ def _build_phase_inv(flag: Flag, _record: MetricRecord) -> Finding:
 
 def _build_mid_side_narrow(flag: Flag, _record: MetricRecord) -> Finding:
     return Finding(
-        title="ステレオ感が乏しい (Side 成分が痩せています)",
+        title="ステレオ感が薄め (中央に音が固まる)",
         severity=flag.severity,
         explanation=(
-            "Mid (中央) に対して Side (差分) のエネルギーが小さく、"
-            "技術的にはステレオでも立体感の薄い音になっています。"
-            "binaural / dummy head ASMR では特に問題になりやすい指標です。"
+            "左右で同じ音 (Mid 成分) が多く、"
+            "左右で違う音 (Side 成分) が少ない構成です。"
+            "binaural / dummy head による「耳元の立体感」を期待すると、"
+            "やや物足りなく感じる可能性があります。"
         ),
         recommendation=(
-            "マイク間距離・配置、ステレオエフェクト/M-S プロセッサの設定、"
-            "もしくは収録環境の反射特性を見直してください。"
+            "立体感重視で視聴したい場合は、より広がり感のある音源の方が向いています。"
+            "リラックス用 BGM 的に流すなら問題ありません。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
 
 
 _BAND_LABEL: dict[str, str] = {
-    "BAND_BIAS_LOW": "低域 (20–125 Hz)",
-    "BAND_BIAS_LOW_MID": "中低域 (160–1.25 kHz)",
-    "BAND_BIAS_HIGH_MID": "中高域 (1.6–6.3 kHz)",
-    "BAND_BIAS_HIGH": "高域 (8 kHz–20 kHz)",
+    "BAND_BIAS_LOW": "低音域 (20–125 Hz, ベース / タッピング)",
+    "BAND_BIAS_LOW_MID": "中低音域 (160–1.25 kHz, 声 / 体)",
+    "BAND_BIAS_HIGH_MID": "中高音域 (1.6–6.3 kHz, 子音 / こすれ音)",
+    "BAND_BIAS_HIGH": "高音域 (8–20 kHz, 息 / シュッ音)",
 }
 
 
 def _build_band_bias(flag: Flag, _record: MetricRecord) -> Finding:
     band_name = _BAND_LABEL.get(flag.code, "未知の帯域")
     return Finding(
-        title=f"{band_name} で L/R 偏りが出ています",
+        title=f"{band_name} が片耳寄りに聞こえます",
         severity=flag.severity,
         explanation=(
-            f"{band_name} で左右のエネルギーが大きく異なります。"
-            "EQ の片チャンネルだけかけ忘れ、片側のマイク特性の偏り、"
-            "あるいは部屋の音響特性が片側だけに乗っている可能性があります。"
+            f"{band_name} だけ左右でバランスが大きく崩れています。"
+            "全体としてはステレオでも、この帯域に該当する音 "
+            "(例えば低音域なら低いタッピング、高音域なら息遣いの細い音) "
+            "が片耳に偏って届くことになります。"
         ),
         recommendation=(
-            f"{band_name} を中心に EQ や個別チャンネル処理を見直すか、"
-            "1/3-octave チャートで他の帯域との比較を確認してください (詳細データ内)。"
+            "気になる場合は片イヤホンで聴き比べると判別しやすいです。"
+            "ASMR の素材特性 (片側で出てる音) であって意図的な可能性もあります。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -192,35 +195,50 @@ def _build_band_bias(flag: Flag, _record: MetricRecord) -> Finding:
 def _build_true_peak(flag: Flag, record: MetricRecord) -> Finding:
     dyn = record.dynamics
     peak = dyn.true_peak_dbtp_max if dyn is not None else float("nan")
-    clipping = "の発生が確実" if flag.severity is Verdict.FAIL else "の可能性"
+    if flag.severity is Verdict.FAIL:
+        title = "音割れする箇所があります"
+        explanation = (
+            f"true peak が {peak:+.2f} dBTP に達しており、"
+            "再生機材によっては「バリッ」「ジリッ」と歪んで聞こえる場面があります。"
+            "安いイヤホンやスマホ内蔵スピーカーで特に顕著で、"
+            "大音量再生では確実に歪みます。"
+        )
+        recommendation = (
+            "**マスターボリュームを控えめにして視聴してください**。"
+            "それでも気になる場合は再生機材 (DAC / ヘッドホンアンプ) の"
+            "クオリティを上げると改善します。"
+        )
+    else:
+        title = "音量大きめ、機材次第で音割れの可能性"
+        explanation = (
+            f"true peak が {peak:+.2f} dBTP まで上がっており、"
+            "ヘッドルームに余裕が少なめです。"
+            "高音質な再生環境では問題ないことが多いですが、"
+            "安い機材や大音量設定では歪みが出るかもしれません。"
+        )
+        recommendation = "マスターボリュームを少し下げて視聴するのが無難です。"
     return Finding(
-        title="True Peak が上限を超えています (clip 危険)",
+        title=title,
         severity=flag.severity,
-        explanation=(
-            f"BS.1770-5 Annex 2 で計測した true peak が {peak:+.2f} dBTP に達しています。"
-            f"民生 DAC でのインターサンプルクリップ{clipping}があり、"
-            "再生環境次第で歪み/プチノイズとして聞こえます。"
-        ),
-        recommendation=(
-            "マスター段で True Peak Limiter (target ≤ −1 dBTP) を入れるか、"
-            "全体ゲインを下げてヘッドルームを確保してください。"
-        ),
+        explanation=explanation,
+        recommendation=recommendation,
         technical_ref=f"{flag.code} · {flag.message}",
     )
 
 
 def _build_gate_reject(flag: Flag, _record: MetricRecord) -> Finding:
     return Finding(
-        title="片側または両方のチャンネルが無音レベルです",
+        title="片側または両方のチャンネルがほぼ無音です",
         severity=flag.severity,
         explanation=(
-            "BS.1770 の絶対ゲート (−70 LUFS) で除外されるほどに、"
-            "L または R チャンネルが小さいまたは無音です。"
-            "録音漏れ、ミュート、ケーブル断、入力レベルの設定ミスが疑われます。"
+            "L または R チャンネルがほぼ無音レベル "
+            "(BS.1770 の絶対ゲート −70 LUFS 以下) になっています。"
+            "音源側がモノラル素材を片チャンネルだけに収録した可能性、"
+            "あるいは販売物として明らかに不良 (録音漏れ) の可能性があります。"
         ),
         recommendation=(
-            "該当チャンネルの収録レベル、ミュート/ソロ状態、"
-            "ケーブル接続、オーディオインターフェイスのゲイン設定を確認してください。"
+            "ステレオ音源として購入したものであれば、不良品の可能性があります。"
+            "販売元 / プラットフォームに確認することをおすすめします。"
         ),
         technical_ref=f"{flag.code} · {flag.message}",
     )
@@ -253,7 +271,7 @@ def _build_finding(flag: Flag, record: MetricRecord) -> Finding:
 def _build_generic(flag: Flag, _record: MetricRecord) -> Finding:
     """Fallback for flags without an explicit interpreter — keeps the UI honest."""
     return Finding(
-        title=f"検査ルール {flag.code} が fired しました",
+        title=f"検査ルール {flag.code} が反応しました",
         severity=flag.severity,
         explanation=(
             f"このルールへの平語の解説はまだ用意されていません。技術的な詳細: {flag.message}"
@@ -264,21 +282,19 @@ def _build_generic(flag: Flag, _record: MetricRecord) -> Finding:
 
 
 # ----------------------------------------------------------------------
-# Headline / summary builders
+# Headline / summary builders (listener framing)
 # ----------------------------------------------------------------------
 _HEADLINE_PREFIX = {
-    Verdict.OK: "✅ 問題なし",
-    Verdict.WARN: "⚠ 注意あり",
-    Verdict.FAIL: "✗ 要修正",
+    Verdict.OK: "✅ 視聴 OK",
+    Verdict.WARN: "⚠ 視聴上の注意",
+    Verdict.FAIL: "✗ 視聴環境を選びます",
 }
 
 
 def _build_headline(verdict: Verdict, findings: tuple[Finding, ...]) -> str:
     prefix = _HEADLINE_PREFIX[verdict]
     if not findings:
-        return f"{prefix} — 主要な検査項目を通過しました"
-    # Surface the title of the most severe finding (first in iteration order is fine
-    # because Verdict comparisons sort by severity already).
+        return f"{prefix} — 通常の視聴環境で安心して聞けます"
     top = max(findings, key=lambda f: f.severity.value)
     return f"{prefix} — {top.title}"
 
@@ -288,17 +304,19 @@ def _build_summary(verdict: Verdict, findings: tuple[Finding, ...]) -> str:
     warn_count = sum(1 for f in findings if f.severity is Verdict.WARN)
     if verdict is Verdict.OK:
         return (
-            "ステレオ音場 / ラウドネス / 帯域バランス / true peak のいずれも"
-            "規定の閾値内に収まりました。配信向けに大きな修正点はありません。"
+            "L/R バランス・音量レベル・帯域バランス・true peak のいずれも"
+            "規定の閾値内に収まっています。通常の再生環境で問題なく視聴できます。"
         )
     if verdict is Verdict.WARN:
         return (
-            f"検査で {warn_count} 件の注意点が見つかりました。"
-            "致命的な問題ではありませんが、配信前に下記を一度確認することを推奨します。"
+            f"視聴前に知っておくべき点が {warn_count} 件あります。"
+            "致命的な問題ではないので、下記を踏まえて再生環境 / 音量を"
+            "調整すれば快適に視聴できます。"
         )
     return (
-        f"検査で重大な問題が {fail_count} 件 + 注意点が {warn_count} 件見つかりました。"
-        "配信前に下記の項目を修正してください。リスナー体験に直接影響するレベルです。"
+        f"再生環境への適性に大きく影響する問題が {fail_count} 件 + 注意点 {warn_count} 件あります。"
+        "視聴前に下記を確認し、必要なら再生機材 / 音量を調整してください。"
+        "音源そのものに問題がある場合は別の音源を検討する価値があります。"
     )
 
 
@@ -320,14 +338,18 @@ def _dedup_actions(findings: Iterable[Finding]) -> tuple[str, ...]:
 def _build_unanalyzable_diagnosis(record: MetricRecord) -> Diagnosis:
     reason = record.skip_reason or "詳細不明"
     if record.status is ScanStatus.SKIPPED:
-        headline = "ℹ 解析対象外"
+        headline = "ℹ 視聴チェック対象外"
         summary = (
-            f"このファイルは BS.1770-5 ベースの L/R 検査の対象になりません ({reason})。"
+            f"このファイルは L/R バランスの検査対象になりません ({reason})。"
             "モノラル素材や 5.1ch などのマルチチャンネル素材は仕様上スキップされます。"
+            "ファイルが視聴できないという意味ではありません。"
         )
-    else:  # ERRORED — should be rare here because the use case usually raises
-        headline = "✗ 解析失敗"
-        summary = f"ファイルのデコードに失敗しました ({reason})。"
+    else:  # ERRORED
+        headline = "✗ ファイルが読めません"
+        summary = (
+            f"ファイルのデコードに失敗しました ({reason})。"
+            "ファイル形式が壊れている、または対応していない可能性があります。"
+        )
     return Diagnosis(
         verdict=Verdict.OK,
         headline=headline,
