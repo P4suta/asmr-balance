@@ -17,6 +17,7 @@ Path-safety strategy (two-stage barrier — defense in depth):
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -51,6 +52,20 @@ def _ensure_safe_relative(rel_path: str) -> None:
         raise LibraryPathError(rel_path, reason="escapes library root")
 
 
+def _is_under_root(candidate: Path, root: Path) -> bool:
+    """Single point of authority for "is ``candidate`` inside ``root``?".
+
+    Uses :func:`os.path.commonpath` — the idiom CodeQL's
+    ``py/path-injection`` query recognizes as a path-traversal barrier.
+    """
+    try:
+        return os.path.commonpath([str(root), str(candidate)]) == str(root)
+    except ValueError:
+        # Different drive letters on Windows raise ValueError; treat as
+        # "not under root" defensively.
+        return False
+
+
 def resolve_library_target(rel_path: str) -> Path:
     """Resolve ``rel_path`` to an absolute :class:`Path` under the library root.
 
@@ -60,9 +75,9 @@ def resolve_library_target(rel_path: str) -> Path:
     """
     _ensure_safe_relative(rel_path)
     root = library_root().resolve()
-    target = (root / rel_path).resolve()
-    # Defense in depth: re-check after resolve in case symlinks routed us out.
-    if not target.is_relative_to(root):
+    target = Path(os.path.realpath(root / rel_path))
+    # Defense in depth: re-check after realpath in case symlinks routed us out.
+    if not _is_under_root(target, root):
         raise LibraryPathError(rel_path, reason="escapes library root")
     if not target.exists():
         raise LibraryPathError(rel_path, reason="not found")

@@ -70,6 +70,17 @@ def test_list_rejects_absolute_path(library_root: Path) -> None:
     assert exc_info.value.reason == "escapes library root"
 
 
+def test_list_rejects_symlink_escape(library_root: Path, tmp_path: Path) -> None:
+    # Symlinks pass the string sanitizer but must be caught by the
+    # post-realpath ``_is_under_root`` defense-in-depth check.
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (library_root / "escape").symlink_to(outside)
+    with pytest.raises(LibraryPathError) as exc_info:
+        list_library("escape")
+    assert exc_info.value.reason == "escapes library root"
+
+
 def test_list_rejects_missing(library_root: Path) -> None:
     with pytest.raises(LibraryPathError) as exc_info:
         list_library("does/not/exist")
