@@ -4,7 +4,7 @@ Every failure that escapes a route lands here and is shaped into a uniform
 :class:`ErrorEnvelope` JSON body. The handlers cover four axes:
 
 * :class:`DomainError`        — application-defined failures (use case raised).
-* :class:`HTTPException`      — fastapi / starlette signalled HTTP errors.
+* :class:`HTTPException`      — fastapi / starlette signaled HTTP errors.
 * :class:`RequestValidationError` — Pydantic / FastAPI input validation.
 * :class:`Exception`          — anything else (programmer bug). Logged with
   a stack trace; the wire body never leaks the trace to the client.

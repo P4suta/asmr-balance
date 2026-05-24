@@ -66,3 +66,42 @@ class LibraryPathError(DomainError):
             f"library path error: {reason} ({requested!r})",
             context={"requested": requested, "reason": reason},
         )
+        self.requested = requested
+        self.reason = reason
+
+
+class JobNotFoundError(DomainError):
+    """A scan job ID does not exist in the registry (or has been evicted)."""
+
+    status_code: ClassVar[int] = 404
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(
+            f"scan job not found: {job_id}",
+            context={"job_id": job_id},
+        )
+        self.job_id = job_id
+
+
+class EmptyScanRequestError(DomainError):
+    """The scan request resolved to zero audio files."""
+
+    status_code: ClassVar[int] = 400
+
+    def __init__(self, requested: tuple[str, ...]) -> None:
+        super().__init__(
+            f"scan request resolved to zero audio files: {list(requested)!r}",
+            context={"requested": list(requested)},
+        )
+
+
+class ScanReportNotReadyError(DomainError):
+    """The report file is not yet (or no longer) available for download."""
+
+    status_code: ClassVar[int] = 404
+
+    def __init__(self, job_id: str, *, state: str, reason: str) -> None:
+        super().__init__(
+            f"report not ready: job {job_id} is {state} ({reason})",
+            context={"job_id": job_id, "state": state, "reason": reason},
+        )

@@ -1,18 +1,40 @@
 {% extends "base.html" %}
-{% block title %}asmr-balance — Inspect{% endblock %}
+{% block title %}asmr-balance{% endblock %}
 
 {% block content %}
-<section class="inspect-pane" aria-labelledby="inspect-heading">
+<nav class="tabs" role="tablist">
+  <button
+    type="button"
+    class="tab tab--active"
+    role="tab"
+    aria-controls="inspect-pane"
+    data-tab="inspect"
+  >Inspect</button>
+  <button
+    type="button"
+    class="tab"
+    role="tab"
+    aria-controls="scan-pane"
+    data-tab="scan"
+  >Scan</button>
+</nav>
+
+<section
+  id="inspect-pane"
+  class="pane pane--active"
+  role="tabpanel"
+  aria-labelledby="inspect-heading"
+>
   <h2 id="inspect-heading">Inspect — 1 file</h2>
   <p class="hint">音声ファイル (.wav / .flac / .mp3 / .mp4 / …) を選択またはドラッグ &amp; ドロップ。</p>
 
   <form
     id="inspect-form"
     hx-post="/api/inspect/partial"
-    hx-target="#result-area"
+    hx-target="#inspect-result-area"
     hx-swap="innerHTML"
     hx-encoding="multipart/form-data"
-    hx-indicator="#busy"
+    hx-indicator="#inspect-busy"
   >
     <label class="drop-zone" for="file-input">
       <span class="drop-zone__label">クリック or ドロップ</span>
@@ -26,10 +48,40 @@
     </label>
     <div class="form-row">
       <button type="submit">解析</button>
-      <span id="busy" class="busy">解析中…</span>
+      <span id="inspect-busy" class="busy">解析中…</span>
     </div>
   </form>
 
-  <section id="result-area" aria-live="polite"></section>
+  <section id="inspect-result-area" aria-live="polite"></section>
+</section>
+
+<section
+  id="scan-pane"
+  class="pane"
+  role="tabpanel"
+  aria-labelledby="scan-heading"
+  hidden
+>
+  <h2 id="scan-heading">Scan — library</h2>
+  <p class="hint">
+    <code>/library</code> 配下の rel-path を指定 (ファイル or ディレクトリ)。
+    例: <code>album</code>, <code>artist/EP01</code>, <code>single.wav</code>。
+  </p>
+
+  <form id="scan-form">
+    <div class="form-row">
+      <input
+        id="scan-path"
+        name="path"
+        type="text"
+        placeholder="library 配下の rel-path"
+        required
+        autocomplete="off"
+      >
+      <button type="submit">Start scan</button>
+    </div>
+  </form>
+
+  <section id="scan-result-area" aria-live="polite"></section>
 </section>
 {% endblock %}

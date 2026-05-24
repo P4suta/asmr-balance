@@ -68,3 +68,78 @@ def test_error_envelope_round_trip() -> None:
         "context": {"suffix": ".xyz", "supported": [".wav"]},
         "trace_id": "deadbeef",
     }
+
+
+def test_library_entry_dto_from_entry() -> None:
+    from asmr_balance.web.dto import LibraryEntryDto
+    from asmr_balance.web.use_cases.library import LibraryEntry
+
+    entry = LibraryEntry(name="x.wav", type="file", rel_path="album/x.wav", is_audio=True, size=42)
+    dto = LibraryEntryDto.from_entry(entry)
+    assert dto.name == "x.wav"
+    assert dto.type == "file"
+    assert dto.rel_path == "album/x.wav"
+    assert dto.is_audio is True
+    assert dto.size == 42
+
+
+def test_scan_job_response_from_job(tmp_path: Path) -> None:
+    import asyncio
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from asmr_balance.web.dto import ScanJobResponse
+    from asmr_balance.web.runtime.jobs import Job
+
+    job = Job(
+        id=uuid4(),
+        requested_paths=("a", "b"),
+        resolved_files=(tmp_path / "x.wav",),
+        out_dir=tmp_path,
+        queue=asyncio.Queue(),
+        started_at=datetime.now(UTC),
+    )
+    dto = ScanJobResponse.from_job(job)
+    assert dto.job_id == str(job.id)
+    assert dto.total_files == 1
+    assert dto.requested_paths == ("a", "b")
+
+
+def test_scan_job_status_from_job_terminal(tmp_path: Path) -> None:
+    import asyncio
+    from datetime import UTC, datetime
+    from uuid import uuid4
+
+    from asmr_balance.web.dto import ScanJobStatus
+    from asmr_balance.web.runtime.jobs import Job, JobState
+
+    started = datetime.now(UTC)
+    job = Job(
+        id=uuid4(),
+        requested_paths=("a",),
+        resolved_files=(),
+        out_dir=tmp_path,
+        queue=asyncio.Queue(),
+        started_at=started,
+        state=JobState.FAILED,
+        completed_at=started,
+        failed_reason="boom",
+    )
+    dto = ScanJobStatus.from_job(job)
+    assert dto.state == "failed"
+    assert dto.failed_reason == "boom"
+    assert dto.completed_at == started
+
+
+def test_scan_file_event_from_file_result(balanced_wav: Path) -> None:
+    from asmr_balance.config.model import Config
+    from asmr_balance.scan.pipeline import scan_one
+    from asmr_balance.web.dto import ScanFileEvent
+
+    result = scan_one(balanced_wav, Config().with_overrides(workers=1))
+    event = ScanFileEvent.from_file_result(result, sequence=2, total=5)
+    assert event.type == "file_done"
+    assert event.sequence == 2
+    assert event.total == 5
+    assert event.source_name == "balanced.wav"
+    assert event.verdict == result.verdict.name
