@@ -360,3 +360,56 @@ button[type="submit"]:hover { filter: brightness(1.1); }
   font-family: var(--mono);
   font-size: 0.85rem;
 }
+
+/* --- KPI tile row (inspect result) --------------------------------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin: 1.25rem 0;
+}
+.kpi {
+  padding: 0.6rem 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+}
+.kpi__label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.kpi__value {
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.25rem;
+}
+
+/* --- chart layout (shared inspect + scan) -------------------------- */
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.chart {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem;
+  min-height: 280px;
+}
+.chart--wide { grid-column: 1 / -1; }
+
+/* --- skip notice (inspect, mono / unsupported layout) -------------- */
+.skip-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 3px solid var(--warn);
+  border-radius: 4px;
+  color: var(--fg);
+}

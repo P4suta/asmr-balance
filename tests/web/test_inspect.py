@@ -47,6 +47,25 @@ def test_inspect_partial_returns_html(client: TestClient, panned_wav: Path) -> N
     text = response.text.lower()
     assert "verdict" in text
     assert "lr_balance" in text or "lr-balance" in text
+    # Phase 2: KPI tiles + chart divs rendered for ANALYZED records.
+    assert "kpi-grid" in text
+    assert "chart-band" in text
+    assert "chart-true-peak" in text
+    assert "chart-sliding" in text
+
+
+def test_inspect_partial_for_skipped_record_omits_charts(
+    client: TestClient, mono_wav: Path
+) -> None:
+    response = _post_inspect(
+        client, path=mono_wav, filename="mono.wav", endpoint="/api/inspect/partial"
+    )
+    assert response.status_code == 200
+    text = response.text.lower()
+    assert "skip-notice" in text
+    # No chart divs (and the script that initializes Plotly is gated on
+    # ``analyzed`` in the template).
+    assert "chart-band" not in text
 
 
 def test_inspect_rejects_unsupported_suffix(client: TestClient) -> None:

@@ -1,4 +1,5 @@
 {% set verdict = response.verdict %}
+{% set analyzed = response.record.status == 'analyzed' %}
 <article class="result-card">
   <header class="result-card__header">
     <h3 class="result-card__title">{{ response.source_name }}</h3>
@@ -17,6 +18,51 @@
     </ul>
   {% else %}
     <p class="flags-empty">フラグ発火なし</p>
+  {% endif %}
+
+  {% if analyzed %}
+    <section class="kpi-grid" aria-label="主要 metric">
+      {% set kpi = [
+        ('Integrated ΔLU', '%+.2f LU'|format(flat['loudness.delta_lu'])),
+        ('Sliding max', '%+.2f LU'|format(flat['sliding.max_lu'])),
+        ('Sliding p95', '%+.2f LU'|format(flat['sliding.p95_lu'])),
+        ('LRA',           '%.2f LU' |format(flat['lra.lra_lu'])),
+        ('True peak max', '%+.2f dBTP'|format(flat['dynamics.true_peak_dbtp_max'])),
+        ('Pearson r',     '%.3f'    |format(flat['correlation.pearson_r'])),
+      ] %}
+      {% for label, value in kpi %}
+        <div class="kpi">
+          <div class="kpi__label">{{ label }}</div>
+          <div class="kpi__value">{{ value }}</div>
+        </div>
+      {% endfor %}
+    </section>
+
+    <section class="charts" aria-label="charts">
+      <div id="chart-band" class="chart chart--wide"></div>
+      <div id="chart-true-peak" class="chart"></div>
+      <div id="chart-sliding" class="chart"></div>
+    </section>
+
+    <script>
+      (() => {
+        if (typeof Plotly === 'undefined') return;
+        const figures = {
+          band:      {{ figures['band']      | tojson }},
+          truePeak:  {{ figures['true_peak'] | tojson }},
+          sliding:   {{ figures['sliding']   | tojson }},
+        };
+        const opts = { responsive: true, displayModeBar: false };
+        Plotly.newPlot('chart-band',      figures.band.data,     figures.band.layout,     opts);
+        Plotly.newPlot('chart-true-peak', figures.truePeak.data, figures.truePeak.layout, opts);
+        Plotly.newPlot('chart-sliding',   figures.sliding.data,  figures.sliding.layout,  opts);
+      })();
+    </script>
+  {% else %}
+    <p class="skip-notice">
+      <strong>{{ response.record.status }}</strong>
+      — {{ response.record.skip_reason or 'no reason given' }}
+    </p>
   {% endif %}
 
   <details class="metrics-details">

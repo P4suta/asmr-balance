@@ -1,13 +1,24 @@
 // Three pieces of progressive enhancement glue:
 //   1. Tab switching (Inspect ↔ Scan).
 //   2. Drag-and-drop on the inspect drop-zone.
-//   3. Scan form submission + SSE consumer (per-file rows + downloads).
+//   3. Scan form submission + SSE consumer (per-file rows + live charts).
 //
-// Everything degrades gracefully — without JS the inspect form still works
-// (HTMX); the scan form posts to /api/scan but cannot render live progress.
+// Without JS the inspect form still works (HTMX); the scan form posts to
+// /api/scan but cannot render live progress.
 
 (() => {
   "use strict";
+
+  // ---- palette (mirrors app.css for inline chart definitions) -------
+  const PALETTE = {
+    ok: "#4ade80",
+    warn: "#fbbf24",
+    fail: "#f87171",
+    neutral: "#5aa9ff",
+    fg: "#e8e8ea",
+    border: "rgba(255,255,255,0.08)",
+  };
+  const PLOTLY_OPTS = { responsive: true, displayModeBar: false };
 
   // ---- tabs ----------------------------------------------------------
   const tabs = document.querySelectorAll("[data-tab]");
@@ -90,14 +101,19 @@
       return;
     }
     targetEl.innerHTML = renderProgressShell(data);
+    initScanCharts(targetEl);
     consumeSse(data.job_id, targetEl);
   }
 
   function consumeSse(jobId, targetEl) {
+    const counts = { OK: 0, WARN: 0, FAIL: 0 };
     const sse = new EventSource(`/api/scan/${jobId}/events`);
     sse.addEventListener("file_done", (e) => {
       const payload = JSON.parse(e.data);
       appendRow(targetEl, payload);
+      counts[payload.verdict] = (counts[payload.verdict] || 0) + 1;
+      updateVerdictDonut(targetEl, counts);
+      extendDeltaScatter(targetEl, payload);
     });
     sse.addEventListener("done", () => {
       sse.close();
@@ -113,6 +129,86 @@
     });
   }
 
+  // ---- chart scaffolding (scan side) --------------------------------
+  function initScanCharts(targetEl) {
+    if (typeof Plotly === "undefined") return;
+    const donutEl = targetEl.querySelector(".chart-verdict-donut");
+    const scatterEl = targetEl.querySelector(".chart-delta-scatter");
+    if (donutEl) {
+      Plotly.newPlot(
+        donutEl,
+        [
+          {
+            type: "pie",
+            hole: 0.55,
+            labels: ["OK", "WARN", "FAIL"],
+            values: [0, 0, 0],
+            marker: { colors: [PALETTE.ok, PALETTE.warn, PALETTE.fail] },
+            textposition: "inside",
+            hovertemplate: "%{label}: %{value} (%{percent})<extra></extra>",
+          },
+        ],
+        sharedLayout("Verdict distribution", { showlegend: true, legend: { orientation: "h", y: -0.1 } }),
+        PLOTLY_OPTS,
+      );
+    }
+    if (scatterEl) {
+      Plotly.newPlot(
+        scatterEl,
+        [
+          {
+            type: "scatter",
+            mode: "markers",
+            x: [],
+            y: [],
+            text: [],
+            marker: { color: PALETTE.neutral, size: 8 },
+            hovertemplate: "#%{x} %{text}: %{y:+.2f} LU<extra></extra>",
+          },
+        ],
+        sharedLayout("Per-file ΔLU (signed)", {
+          xaxis: { title: "File index", gridcolor: PALETTE.border },
+          yaxis: { title: "ΔLU", zeroline: true, zerolinecolor: PALETTE.border, gridcolor: PALETTE.border },
+        }),
+        PLOTLY_OPTS,
+      );
+    }
+  }
+
+  function updateVerdictDonut(targetEl, counts) {
+    if (typeof Plotly === "undefined") return;
+    const donutEl = targetEl.querySelector(".chart-verdict-donut");
+    if (!donutEl) return;
+    Plotly.restyle(donutEl, { values: [[counts.OK, counts.WARN, counts.FAIL]] });
+  }
+
+  function extendDeltaScatter(targetEl, payload) {
+    if (typeof Plotly === "undefined") return;
+    if (payload.delta_lu_db === null || payload.delta_lu_db === undefined) return;
+    const scatterEl = targetEl.querySelector(".chart-delta-scatter");
+    if (!scatterEl) return;
+    Plotly.extendTraces(
+      scatterEl,
+      { x: [[payload.sequence]], y: [[payload.delta_lu_db]], text: [[payload.source_name]] },
+      [0],
+    );
+  }
+
+  function sharedLayout(title, overrides) {
+    return Object.assign(
+      {
+        title: { text: title, x: 0.02 },
+        paper_bgcolor: "transparent",
+        plot_bgcolor: "rgba(255,255,255,0.02)",
+        font: { color: PALETTE.fg, family: "system-ui, sans-serif" },
+        margin: { l: 60, r: 24, t: 48, b: 64 },
+        height: 280,
+        showlegend: false,
+      },
+      overrides || {},
+    );
+  }
+
   function renderProgressShell(data) {
     return `
       <article class="scan-card" data-job-id="${data.job_id}">
@@ -124,6 +220,10 @@
           </span>
         </header>
         <progress class="scan-progress-bar" max="${data.total_files}" value="0"></progress>
+        <section class="charts">
+          <div class="chart chart-verdict-donut"></div>
+          <div class="chart chart-delta-scatter"></div>
+        </section>
         <table class="scan-table">
           <thead><tr>
             <th>#</th><th>file</th><th>verdict</th><th>elapsed</th><th>flags</th>
