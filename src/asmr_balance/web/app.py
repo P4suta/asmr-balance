@@ -19,6 +19,8 @@ from asmr_balance.web.resources import STATIC_DIR, TEMPLATES_DIR
 from asmr_balance.web.routes import health, inspect, library, pages, scan, schema
 from asmr_balance.web.runtime.jobs import JobRegistry
 
+_VERDICT_LABELS = {"OK": "問題なし", "WARN": "注意", "FAIL": "要確認"}
+
 
 def create_app() -> FastAPI:
     """Build a fresh :class:`FastAPI` instance wired with routes + templates."""
@@ -27,7 +29,11 @@ def create_app() -> FastAPI:
         description="Multi-axis L/R balance scanner — Web UI",
         version=__version__,
     )
-    app.state.templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    # Single source of truth for verdict copy — templates use
+    # ``{{ severity.name | verdict_label }}``; JS mirrors the table.
+    templates.env.filters["verdict_label"] = lambda name: _VERDICT_LABELS.get(name, name)
+    app.state.templates = templates
     app.state.job_registry = JobRegistry()
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(health.router)

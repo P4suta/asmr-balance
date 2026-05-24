@@ -1,15 +1,10 @@
-{% set verdict = response.verdict %}
 {% set analyzed = response.record.status == 'analyzed' %}
 {% macro chip(severity) -%}
-  <span class="chip chip--{{ severity.name|lower }}">{{ severity.name }}</span>
+  <span class="chip chip--{{ severity.name|lower }}">{{ severity.name | verdict_label }}</span>
 {%- endmacro %}
 <article class="result-card">
-  <header class="result-card__header">
-    <h3 class="result-card__title">{{ response.source_name }}</h3>
-    <span class="verdict verdict--{{ verdict|lower }}">{{ verdict }}</span>
-    <small class="elapsed">{{ '%.2f'|format(response.elapsed_sec) }} s</small>
-  </header>
-
+  {# Filename + verdict chip + elapsed are now consolidated into the drop
+     zone's "done" state — this card leads directly with the diagnosis. #}
   <section class="diagnosis diagnosis--{{ diagnosis.verdict.name|lower }}"
            aria-label="診断結果">
     <h4 class="diagnosis__headline">{{ diagnosis.headline }}</h4>
@@ -186,7 +181,7 @@
           <li class="finding finding--{{ f.severity.name|lower }}">
             <header class="finding__head">
               <span class="finding__title">{{ f.title }}</span>
-              <span class="verdict verdict--{{ f.severity.name|lower }}">{{ f.severity.name }}</span>
+              <span class="verdict verdict--{{ f.severity.name|lower }}">{{ f.severity.name | verdict_label }}</span>
             </header>
             <p class="finding__explanation">{{ f.explanation }}</p>
             <p class="finding__recommendation">
