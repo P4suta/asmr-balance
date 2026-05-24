@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -27,25 +27,7 @@ from asmr_balance.scan.pipeline import scan_one
 from asmr_balance.sink.base import COLUMN_NAMES, build_sinks
 from asmr_balance.sink.tui import render_inspect
 from asmr_balance.source.adt import LayoutPolicy
-
-_AUDIO_EXTENSIONS: Final[frozenset[str]] = frozenset(
-    {
-        ".wav",
-        ".flac",
-        ".ogg",
-        ".opus",
-        ".aiff",
-        ".aif",
-        ".au",
-        ".mp4",
-        ".mkv",
-        ".webm",
-        ".m4a",
-        ".mov",
-        ".mp3",
-        ".aac",
-    }
-)
+from asmr_balance.source.audio_extensions import AUDIO_EXTENSIONS
 
 app = typer.Typer(
     name="asmr-balance",
@@ -78,7 +60,7 @@ def _find_audio_files(root: Path) -> list[Path]:
     if root.is_file():
         return [root]
     return sorted(
-        p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in _AUDIO_EXTENSIONS
+        p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in AUDIO_EXTENSIONS
     )
 
 

@@ -1,24 +1,60 @@
+# Compose file for both the CLI dev shell (``app``) and the Web UI (``web``).
+# Common image / mounts / env are defined once as top-level ``x-…`` anchors
+# (compose ignores ``x-`` keys) and reused via YAML merge so the two services
+# stay in lockstep.
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: asmr-balance:dev
+  working_dir: /app
+  init: true
+
+x-app-env: &app-env
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  UV_LINK_MODE: copy
+  UV_PROJECT_ENVIRONMENT: /opt/venv
+  HYPOTHESIS_PROFILE: ${HYPOTHESIS_PROFILE:-dev}
+
+x-app-volumes: &app-volumes
+  - .:/app
+  - uv-cache:/root/.cache/uv
+  - venv:/opt/venv
+
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: asmr-balance:dev
-    working_dir: /app
+    <<: *app-base
+    environment: *app-env
+    volumes: *app-volumes
+    stdin_open: true
+    tty: true
+
+  web:
+    <<: *app-base
+    environment:
+      <<: *app-env
+      ASMR_WEB_HOST: "0.0.0.0"
+      ASMR_WEB_PORT: "8000"
+      ASMR_BALANCE_LOG_LEVEL: ${ASMR_BALANCE_LOG_LEVEL:-INFO}
     volumes:
       - .:/app
       - uv-cache:/root/.cache/uv
       - venv:/opt/venv
-    environment:
-      PYTHONUNBUFFERED: "1"
-      PYTHONDONTWRITEBYTECODE: "1"
-      UV_LINK_MODE: copy
-      UV_PROJECT_ENVIRONMENT: /opt/venv
-      HYPOTHESIS_PROFILE: ${HYPOTHESIS_PROFILE:-dev}
-    init: true
-    stdin_open: true
-    tty: true
+      # Read-only mount of the user's audio library, browsable via /api/library.
+      - ${ASMR_LIBRARY_PATH:-./samples}:/library:ro
+      # Writable report destination (per-job subdirs land here).
+      - web-reports:/app/reports
+    # Container binds 0.0.0.0:8000 internally; the host-side mapping below
+    # restricts the listener to 127.0.0.1 so it is never reachable from off-box.
+    # See docs/adr/0014-web-frontend-layering.md.
+    ports:
+      - "127.0.0.1:${ASMR_WEB_HOST_PORT:-8000}:8000"
+    command: uv run asmr-balance-web
+    restart: unless-stopped
 
 volumes:
   uv-cache:
   venv:
+  web-reports:

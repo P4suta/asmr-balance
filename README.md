@@ -1,10 +1,39 @@
 # asmr-balance
 
-ASMR 音声・動画ファイルの **L/R チャンネル偏り** を ITU-R BS.1770-5 ベースで多軸計測する batch CLI。
+ASMR 音声・動画ファイルの **L/R チャンネル偏り** を ITU-R BS.1770-5 ベースで多軸計測するツール。
+ブラウザ UI と batch CLI の両モードを同じ pipeline で提供。
 
 > 全体平均は均衡でも局所的に片側集中する案件、dual mono として配信されてしまった案件、低域 phase 逆相、帯域別の偏り、inter-sample peak で clip する案件 — これらを 30+ の独立 metric と 11 のルールで機械的に検査する。
 >
 > ASMR でよく使われる **96 / 192 kHz** ・ **24-bit / 32-bit float** ソースを first-class でサポート (sample rate に関わらず BS.1770 parity を CI で保証)。
+
+## Web UI quickstart (推奨)
+
+ブラウザで使う場合 — Docker Desktop / Docker Engine があれば OS を問わずこの 3 手順:
+
+```bash
+git clone https://github.com/P4suta/asmr-balance.git
+cd asmr-balance
+docker compose up -d --build web   # 初回は数分かかる
+```
+
+→ http://127.0.0.1:8000 をブラウザで開く。
+音声/動画ファイルを **drag & drop** → MetricRecord と flag 一覧が即座に表示される。
+
+ライブラリ全体をスキャンする場合は `ASMR_LIBRARY_PATH` をホスト側パスに設定:
+
+```bash
+# .env.example をコピーして編集
+cp .env.example .env
+echo 'ASMR_LIBRARY_PATH=/mnt/d/ASMR' >> .env   # Linux / WSL2
+# Windows ネイティブ (PowerShell):
+#   "ASMR_LIBRARY_PATH=D:\ASMR" | Out-File -Encoding ascii -Append .env
+docker compose up -d --build web
+```
+
+container 内では `/library` で read-only マウントされ、`/api/library` から browse 可能 (Phase 1b)。
+
+詳細設計: [docs/adr/0014-web-frontend-layering.md](docs/adr/0014-web-frontend-layering.md)
 
 ## v1.0.0 のアーキテクチャ
 
@@ -49,7 +78,9 @@ warn_dbtp = -1.0
 fail_dbtp = 0.0
 ```
 
-## Quickstart
+## CLI quickstart
+
+CI / 自動化向けの batch インターフェース:
 
 ```bash
 just bootstrap                       # docker build + uv sync + pre-commit/lefthook install
@@ -59,6 +90,7 @@ just schema --format=json            # 出力 column 一覧
 ```
 
 `scan` は ProcessPoolExecutor で複数ファイル並列処理。`--workers N` で worker 数指定 (default = `os.cpu_count()`)。
+Web UI は `workers=1` で sequential (SSE 進捗が自然に流れるため — ADR-0014 参照)。
 
 ## 開発
 
@@ -71,6 +103,10 @@ just regression  # pyloudnorm ±0.1 LU parity at 44.1 / 48 / 88.2 / 96 / 192 kHz
 just mutate      # mutmut, kill rate ≥ 80% gate
 just typos       # crate-ci/typos (audio glossary allowlist in .typos.toml)
 just ci          # 全 gate 一括
+
+just web         # docker compose up -d --build web (Web UI)
+just web-logs    # tail web container logs
+just web-down    # stop web (keeps named volume)
 ```
 
 Modern git hooks via [Lefthook](https://github.com/evilmartians/lefthook) — `just hooks-install` で

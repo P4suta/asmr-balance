@@ -1,0 +1,29 @@
+<article class="scan-card" data-job-id="{{ job_id }}">
+  <header class="scan-card__header">
+    <h3>Scan job</h3>
+    <code class="scan-job-id">{{ job_id }}</code>
+    <span class="scan-progress-counter">
+      <span class="scan-done">0</span> / <span class="scan-total">{{ total_files }}</span>
+    </span>
+  </header>
+  <progress class="scan-progress-bar" max="{{ total_files }}" value="0"></progress>
+  <table class="scan-table">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">file</th>
+        <th scope="col">verdict</th>
+        <th scope="col">elapsed</th>
+        <th scope="col">flags</th>
+      </tr>
+    </thead>
+    <tbody class="scan-rows"></tbody>
+  </table>
+  <footer class="scan-card__footer">
+    <span class="scan-state">running</span>
+    <span class="scan-downloads" hidden>
+      <a class="scan-download" data-ext="parquet">report.parquet</a>
+      <a class="scan-download" data-ext="html">report.html</a>
+    </span>
+  </footer>
+</article>

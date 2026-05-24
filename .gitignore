@@ -51,11 +51,19 @@ site/
 # Reports / generated artifacts
 *.parquet
 *.html
+# Templates are package data — keep them tracked even though *.html is ignored.
+!src/asmr_balance/web/templates/*.html
 report/
 report.parquet
 report.html
 bom.json
 CHANGELOG.md
+
+# samples/ is a placeholder mount point for ASMR_LIBRARY_PATH; the directory
+# itself is tracked (via .gitkeep) but any audio content placed there for
+# local smoke tests is excluded.
+samples/*
+!samples/.gitkeep
 
 # Secrets
 .env.local
@@ -64,5 +72,5 @@ CHANGELOG.md
 # OS
 Thumbs.db
 
-# Claude Code session artefacts
+# Claude Code session artifacts
 .claude/

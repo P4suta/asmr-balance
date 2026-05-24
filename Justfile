@@ -118,6 +118,28 @@ inspect FILE *FLAGS:
 schema *FLAGS:
     {{DC}} uv run asmr-balance schema {{FLAGS}}
 
+# --- web -------------------------------------------------------------
+
+# Start the Web UI in the background. Exposed at http://127.0.0.1:8000 by
+# default (override with ASMR_WEB_HOST_PORT). The container binds 0.0.0.0;
+# compose maps it onto host loopback only — see ADR-0014.
+web:
+    docker compose up -d --build web
+    @echo "→ http://127.0.0.1:${ASMR_WEB_HOST_PORT:-8000}"
+
+# Stop the web container (keeps the named report volume).
+web-down:
+    docker compose stop web
+
+# Tail web container logs.
+web-logs:
+    docker compose logs -f web
+
+# Reset the web container + report volume (factory wipe).
+web-reset:
+    docker compose rm -fsv web
+    docker volume rm -f asmr-balance_web-reports 2>/dev/null || true
+
 # --- hooks (Lefthook + pre-commit) -----------------------------------
 
 # Install both Lefthook (fast, parallel) and pre-commit (CI-canonical) hooks.
