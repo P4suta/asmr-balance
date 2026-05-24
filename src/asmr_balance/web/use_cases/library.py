@@ -57,13 +57,11 @@ def _is_under_root(candidate: Path, root: Path) -> bool:
 
     Uses :func:`os.path.commonpath` — the idiom CodeQL's
     ``py/path-injection`` query recognizes as a path-traversal barrier.
+    The Windows cross-drive ``ValueError`` cannot fire in our deployment
+    (everything-in-docker = Linux container) so it is not caught here;
+    the string-level guard upstream already rejects absolute paths.
     """
-    try:
-        return os.path.commonpath([str(root), str(candidate)]) == str(root)
-    except ValueError:
-        # Different drive letters on Windows raise ValueError; treat as
-        # "not under root" defensively.
-        return False
+    return os.path.commonpath([str(root), str(candidate)]) == str(root)
 
 
 def resolve_library_target(rel_path: str) -> Path:
