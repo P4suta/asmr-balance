@@ -18,3 +18,4 @@
 | 0012 | [Rule algebra + Verdict semilattice](0012-rule-algebra-verdict-semilattice.md) | Accepted |
 | 0013 | [DSP science upgrade (TruePeak / LRA / PSR / 1/3-octave)](0013-dsp-science-upgrade.md) | Accepted |
 | 0014 | [Web frontend as primary interface, layered into HTTP / use case / DTO](0014-web-frontend-layering.md) | Accepted |
+| 0015 | [Web streaming over NDJSON (inspect + scan)](0015-web-streaming-ndjson.md) | Accepted |

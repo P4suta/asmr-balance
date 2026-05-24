@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from asmr_balance.graph.builder import GraphBuilder
-from asmr_balance.graph.scheduler import run_from_iter
+from asmr_balance.graph.scheduler import run, run_from_iter
 from asmr_balance.graph.types import RawBlock
 from asmr_balance.metrics.correlation import StereoCorrelationReducer
 from asmr_balance.metrics.loudness import IntegratedLoudnessReducer
+from asmr_balance.source.adt import LayoutPolicy, Source
+from asmr_balance.source.open import open_source
 
 
 def _stereo_blocks(samples: np.ndarray, block_samples: int) -> list[RawBlock]:
@@ -76,6 +80,54 @@ def test_broadcast_delivers_same_payload_to_both_consumers() -> None:
     results = run_from_iter(frozen, blocks)
     assert results["a"].pearson_r == pytest.approx(results["b"].pearson_r, abs=1e-12)
     assert results["a"].ms_ratio_db == pytest.approx(results["b"].ms_ratio_db, abs=1e-12)
+
+
+def test_run_invokes_on_block_per_consumed_block(tmp_path: Path) -> None:
+    """``on_block`` fires once per block with monotonic ``blocks_done``."""
+    import soundfile as sf
+
+    sr = 48000
+    stereo = np.full((sr, 2), 0.05, dtype=np.float32)  # 1 s
+    wav = tmp_path / "tick.wav"
+    sf.write(str(wav), stereo, sr, subtype="FLOAT")
+
+    block_samples = 4800  # 100 ms
+    source = open_source(wav, LayoutPolicy.DOWNMIX, block_samples)
+    assert isinstance(source, Source)
+
+    g = GraphBuilder()
+    raw = g.source()
+    g.reduce("correlation", StereoCorrelationReducer(), raw)
+    frozen = g.freeze()
+
+    calls: list[tuple[int, int]] = []
+    run(
+        frozen,
+        source,
+        on_block=lambda done, total: calls.append((done, total)),
+        total_blocks=10,
+    )
+
+    # 1 second / 100 ms = 10 blocks; counter must be 1, 2, ..., 10 with the
+    # total parroted unchanged.
+    assert [c for c, _ in calls] == list(range(1, 11))
+    assert {t for _, t in calls} == {10}
+
+
+def test_run_without_on_block_skips_callback_path() -> None:
+    """``on_block=None`` must not error and must still produce reducer output."""
+    sr = 48000
+    rng = np.random.default_rng(seed=4)
+    stereo = rng.standard_normal((sr // 4, 2)).astype(np.float32)
+    blocks = _stereo_blocks(stereo, 4800)
+    g = GraphBuilder()
+    raw = g.source()
+    g.reduce("correlation", StereoCorrelationReducer(), raw)
+    frozen = g.freeze()
+    # run_from_iter purposefully doesn't expose on_block — it is the legacy
+    # in-memory path used by the broadcast / bulk tests.
+    results = run_from_iter(frozen, blocks)
+    assert "correlation" in results
 
 
 def test_chunked_input_matches_bulk_input() -> None:

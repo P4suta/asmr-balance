@@ -175,8 +175,50 @@ class ScanJobStatus(BaseModel):
         )
 
 
+class InspectProgressEvent(BaseModel):
+    """One frame in the NDJSON inspect stream — per-stage progress.
+
+    The browser uses ``stage`` to set the displayed label and ``current/total``
+    to drive a real progress bar. Stage tokens map 1:1 to
+    :data:`asmr_balance.scan.pipeline.ProgressCallback`.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["progress"] = "progress"
+    stage: str
+    current: int
+    total: int
+
+
+class InspectDoneEvent(BaseModel):
+    """Terminal frame — rendered HTML partial ready to inject into the page."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["done"] = "done"
+    html: str
+
+
+class InspectFailedEvent(BaseModel):
+    """Terminal frame for a domain-level failure (415 / 422 / etc.).
+
+    Surfaced after the HTTP 200 stream has already started — the route can't
+    flip the status code mid-response, so the client switches its UI based on
+    ``type == "failed"`` and uses ``status`` / ``detail`` for messaging.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["failed"] = "failed"
+    error: str
+    detail: str
+    status: int
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
 class ScanFileEvent(BaseModel):
-    """SSE payload — one per file as the scan progresses."""
+    """One NDJSON frame on the scan stream — emitted per file as it completes."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -204,6 +246,27 @@ class ScanFileEvent(BaseModel):
             record_status=result.record.status.value,
             delta_lu_db=delta_lu,
         )
+
+
+class ScanDoneEvent(BaseModel):
+    """Terminal NDJSON frame on the scan stream — job ran to completion."""
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["done"] = "done"
+
+
+class ScanFailedEvent(BaseModel):
+    """Terminal NDJSON frame on the scan stream — job aborted mid-flight.
+
+    The reason mirrors :attr:`Job.failed_reason` (``"<ExcClass>: <message>">"``).
+    Same shape as :class:`InspectFailedEvent` so the client dispatch is uniform.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["failed"] = "failed"
+    detail: str
 
 
 # ---------------------------------------------------------------------------

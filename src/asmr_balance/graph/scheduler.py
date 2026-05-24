@@ -15,6 +15,7 @@ scheduler.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, assert_never
 
 from asmr_balance.graph.frozen import FilterNode, FrozenGraph, ReducerNode, SourceNode
@@ -22,21 +23,43 @@ from asmr_balance.graph.types import RawBlock
 from asmr_balance.source.adt import Source
 from asmr_balance.source.open import iter_blocks
 
+BlockCallback = Callable[[int, int], None]
+"""``(blocks_processed, total_blocks)`` ticked once per pulled :class:`RawBlock`."""
 
-def run(graph: FrozenGraph, source: Source) -> dict[str, Any]:
+
+def run(
+    graph: FrozenGraph,
+    source: Source,
+    *,
+    on_block: BlockCallback | None = None,
+    total_blocks: int = 0,
+) -> dict[str, Any]:
     """Execute ``graph`` over the block stream from ``source``.
 
     Returns a mapping ``name → finalize() output`` for every
     :class:`ReducerNode` in the graph.
+
+    Args:
+        graph: frozen DAG to drive.
+        source: stereo PCM stream wrapper.
+        on_block: optional callback invoked after every consumed block. The
+            callback receives ``(blocks_done, total_blocks)``; the streaming
+            inspect endpoint uses this to emit NDJSON progress frames.
+        total_blocks: caller-provided expected block count (used only as the
+            second arg to ``on_block``; the loop itself doesn't depend on it).
     """
     n_nodes = len(graph.nodes)
     pending: list[list[Any]] = [[] for _ in range(n_nodes)]
     source_id = _find_source_id(graph)
 
     # Run phase — feed one block per tick and drive the graph to quiescence.
-    for raw in iter_blocks(source):
+    # ``start=1`` because we want the count of *completed* blocks after _drive.
+    blocks_done = 0
+    for blocks_done, raw in enumerate(iter_blocks(source), start=1):
         pending[source_id].append(raw)
         _drive(graph, pending)
+        if on_block is not None:
+            on_block(blocks_done, total_blocks)
 
     # Flush phase — terminal drain.
     _flush(graph, pending)

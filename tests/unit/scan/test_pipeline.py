@@ -72,6 +72,45 @@ def test_scan_one_unsupported_extension_is_errored(tmp_path: Path) -> None:
     assert result.record.skip_reason is not None
 
 
+def test_scan_one_emits_progress_stages_in_order(tmp_path: Path) -> None:
+    """Every stage boundary fires; ``analyze`` may tick many times, ``complete`` is last."""
+    p = _write_stereo_wav(tmp_path / "x.wav", n_seconds=0.5)
+    events: list[tuple[str, int, int]] = []
+    result = scan_one(p, Config(), on_progress=lambda s, c, t: events.append((s, c, t)))
+    assert result.record.status is ScanStatus.ANALYZED
+
+    stages = [s for s, _, _ in events]
+    # Required boundaries on the happy path.
+    for required in ("probe", "decode", "analyze", "assemble", "evaluate", "complete"):
+        assert required in stages, f"missing stage {required} in {stages}"
+    # Probe-start fires before probe-done, etc.
+    assert stages.index("probe") < stages.index("decode") < stages.index("analyze")
+    assert stages.index("analyze") < stages.index("assemble") < stages.index("evaluate")
+    assert stages[-1] == "complete"
+
+
+def test_scan_one_emits_skipped_stage_for_mono(tmp_path: Path) -> None:
+    p = tmp_path / "mono.wav"
+    sig = np.zeros((4800, 1), dtype=np.float32)
+    sf.write(str(p), sig, 48000, subtype="FLOAT")
+    events: list[str] = []
+    scan_one(p, Config(), on_progress=lambda s, _c, _t: events.append(s))
+    assert "skipped" in events
+    # No analyze / evaluate on skipped files.
+    assert "analyze" not in events
+    assert "evaluate" not in events
+    assert events[-1] == "complete"
+
+
+def test_scan_one_progress_callback_optional(tmp_path: Path) -> None:
+    """The default (no callback) path stays callable and produces identical results."""
+    p = _write_stereo_wav(tmp_path / "x.wav", n_seconds=0.2)
+    a = scan_one(p, Config())
+    b = scan_one(p, Config(), on_progress=None)
+    assert a.record.status is b.record.status
+    assert a.verdict is b.verdict
+
+
 def test_scan_one_layout_skip_policy(tmp_path: Path) -> None:
     p = tmp_path / "surround.wav"
     rng = np.random.default_rng(seed=0)

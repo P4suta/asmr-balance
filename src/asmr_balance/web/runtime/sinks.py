@@ -1,11 +1,11 @@
-"""Sinks bridging the sync ``scan_many`` worker loop to the async SSE handler.
+"""Sinks bridging the sync ``scan_many`` worker loop to the async NDJSON handler.
 
 The :class:`JsonStreamingSink` implements the existing
 :class:`asmr_balance.sink.base.Sink` protocol — the scan worker calls
 ``open / write / close`` from a worker thread; the sink schedules each event
 into the parent event loop's ``asyncio.Queue`` via
-``loop.call_soon_threadsafe``. The SSE handler awaits items off the same
-queue and serializes them as ``data:`` lines.
+``loop.call_soon_threadsafe``. The streaming handler awaits items off the same
+queue and writes them as one JSON object per NDJSON line.
 """
 
 from __future__ import annotations

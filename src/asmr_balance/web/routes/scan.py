@@ -1,24 +1,25 @@
 """Scan job lifecycle endpoints.
 
 ``POST /api/scan`` starts a job. ``GET /api/scan/{id}`` snapshots its state.
-``GET /api/scan/{id}/events`` is the SSE stream — one event per file plus a
-terminal ``done`` event. ``GET /api/scan/{id}/report.{parquet,html,json}``
-serves the per-job report files written by the existing sinks into
-``out_dir``.
+``GET /api/scan/{id}/stream`` is the NDJSON stream — one ``file_done`` frame
+per scanned file, terminated by either ``done`` (success) or ``failed``
+(mid-flight crash). ``GET /api/scan/{id}/report.{parquet,html}`` serves the
+per-job report files written by the existing sinks into ``out_dir``.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import FileResponse
-from sse_starlette.sse import EventSourceResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from asmr_balance.web.dto import (
     COMMON_ERROR_RESPONSES,
+    ScanDoneEvent,
+    ScanFailedEvent,
     ScanJobRequest,
     ScanJobResponse,
     ScanJobStatus,
@@ -26,6 +27,8 @@ from asmr_balance.web.dto import (
 from asmr_balance.web.runtime.jobs import JobRegistry, JobState
 from asmr_balance.web.use_cases.errors import ScanReportNotReadyError
 from asmr_balance.web.use_cases.scan import start_scan_job
+
+NDJSON_MEDIA_TYPE = "application/x-ndjson"
 
 router = APIRouter(prefix="/api", tags=["scan"])
 
@@ -63,23 +66,34 @@ def get_scan_status(
     return ScanJobStatus.from_job(job)
 
 
-@router.get("/scan/{job_id}/events", responses=COMMON_ERROR_RESPONSES)
-async def scan_events(
+@router.get("/scan/{job_id}/stream", responses=COMMON_ERROR_RESPONSES)
+async def scan_stream(
     job_id: UUID,
     registry: Annotated[JobRegistry, Depends(get_registry)],
-) -> EventSourceResponse:
-    """SSE stream: one ``file_done`` per scanned file, then a ``done`` sentinel."""
+) -> StreamingResponse:
+    """NDJSON stream — one ``file_done`` per scanned file plus a terminal frame.
+
+    Frames carry a ``type`` discriminator. ``file_done`` is :class:`ScanFileEvent`;
+    the terminal frame is :class:`ScanDoneEvent` on success or
+    :class:`ScanFailedEvent` (carrying ``Job.failed_reason``) if the background
+    task crashed mid-flight. Status of the JobRegistry lookup itself is still
+    HTTP-shaped — a missing job 404s before the stream opens.
+    """
     job = registry.get(job_id)
 
-    async def event_generator() -> AsyncGenerator[dict[str, str]]:
+    async def frames() -> AsyncIterator[bytes]:
         while True:
             item = await job.queue.get()
             if item is None:
-                yield {"event": "done", "data": "{}"}
+                if job.state is JobState.FAILED:
+                    failed = ScanFailedEvent(detail=job.failed_reason or "scan failed")
+                    yield (failed.model_dump_json() + "\n").encode("utf-8")
+                else:
+                    yield (ScanDoneEvent().model_dump_json() + "\n").encode("utf-8")
                 return
-            yield {"event": "file_done", "data": item.model_dump_json()}
+            yield (item.model_dump_json() + "\n").encode("utf-8")
 
-    return EventSourceResponse(event_generator())
+    return StreamingResponse(frames(), media_type=NDJSON_MEDIA_TYPE)
 
 
 _REPORT_NAMES: dict[str, tuple[str, str]] = {
