@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import polars as pl
 
@@ -22,12 +22,15 @@ if TYPE_CHECKING:
     from asmr_balance.scan.pipeline import FileResult
 
 
+ParquetCompression = Literal["lz4", "uncompressed", "snappy", "gzip", "brotli", "zstd"]
+
+
 @dataclass(slots=True)
 class ParquetSink:
     """Buffer :class:`FileResult` rows; emit a parquet file on :meth:`close`."""
 
     path: str | Path
-    compression: str = "zstd"
+    compression: ParquetCompression = "zstd"
     _rows: list[dict] = field(default_factory=list, init=False)
     _opened: bool = field(default=False, init=False)
 
@@ -51,11 +54,11 @@ class ParquetSink:
         self._opened = False
 
 
-def _column_dtype(column: str) -> pl.PolarsDataType:
+def _column_dtype(column: str) -> pl.DataType:
     if column in {"meta.file_path", "meta.channel_layout", "status", "skip_reason", "verdict"}:
-        return pl.Utf8
+        return pl.Utf8()
     if column == "meta.sample_rate":
-        return pl.Int64
+        return pl.Int64()
     if column == "flag_codes":
-        return pl.List(pl.Utf8)
-    return pl.Float64
+        return pl.List(pl.Utf8())
+    return pl.Float64()

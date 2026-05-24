@@ -21,6 +21,7 @@ import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import Literal
 
 from asmr_balance.source.audio_extensions import AUDIO_EXTENSIONS
 from asmr_balance.web.runtime.paths import library_root
@@ -32,7 +33,7 @@ class LibraryEntry:
     """One entry under the library mount."""
 
     name: str
-    type: str  # "dir" | "file"
+    type: Literal["dir", "file"]
     rel_path: str
     is_audio: bool
     size: int | None

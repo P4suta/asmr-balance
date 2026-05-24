@@ -49,7 +49,7 @@ jobs:
       - run: uv sync --frozen --all-groups
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run basedpyright --level error src tests
+      - run: uv run ty check
       - run: uv run bandit -c pyproject.toml -r src
       - run: uv run vulture src --min-confidence 70
 

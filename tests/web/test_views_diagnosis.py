@@ -250,7 +250,7 @@ def test_diagnosis_is_frozen() -> None:
         is_analyzable=True,
     )
     with __import__("pytest").raises(dataclasses.FrozenInstanceError):
-        d.headline = "boom"  # pyright: ignore[reportAttributeAccessIssue]
+        d.headline = "boom"  # ty: ignore[invalid-assignment]
 
 
 def test_finding_is_frozen() -> None:
@@ -264,4 +264,4 @@ def test_finding_is_frozen() -> None:
         technical_ref="x",
     )
     with __import__("pytest").raises(dataclasses.FrozenInstanceError):
-        f.title = "boom"  # pyright: ignore[reportAttributeAccessIssue]
+        f.title = "boom"  # ty: ignore[invalid-assignment]

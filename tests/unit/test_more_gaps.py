@@ -36,10 +36,11 @@ def test_inspect_renderer_render_method(tmp_path: Path) -> None:
     p = tmp_path / "x.wav"
     sf.write(str(p), np.zeros((100, 2), dtype=np.float32), 48000, subtype="FLOAT")
     result = scan_one(p, Config())
-    console = Console(file=io.StringIO(), width=120, force_terminal=False, color_system=None)
+    buf = io.StringIO()
+    console = Console(file=buf, width=120, force_terminal=False, color_system=None)
     renderer = InspectRenderer(console=console)
     renderer.render(result)
-    out = console.file.getvalue()  # type: ignore[attr-defined]
+    out = buf.getvalue()
     assert "x.wav" in out
 
 
@@ -59,9 +60,10 @@ def test_render_inspect_with_flags_present(tmp_path: Path) -> None:
     sf.write(str(p), samples, sr, subtype="FLOAT")
     result = scan_one(p, Config())
     assert result.flags
-    console = Console(file=io.StringIO(), width=200, force_terminal=False, color_system=None)
+    buf = io.StringIO()
+    console = Console(file=buf, width=200, force_terminal=False, color_system=None)
     render_inspect(result, console=console)
-    out = console.file.getvalue()  # type: ignore[attr-defined]
+    out = buf.getvalue()
     assert "LR_BALANCE_FAIL" in out
 
 

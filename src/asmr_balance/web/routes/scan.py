@@ -9,6 +9,7 @@ serves the per-job report files written by the existing sinks into
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -70,7 +71,7 @@ async def scan_events(
     """SSE stream: one ``file_done`` per scanned file, then a ``done`` sentinel."""
     job = registry.get(job_id)
 
-    async def event_generator() -> object:
+    async def event_generator() -> AsyncGenerator[dict[str, str]]:
         while True:
             item = await job.queue.get()
             if item is None:

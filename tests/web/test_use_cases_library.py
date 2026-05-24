@@ -131,4 +131,4 @@ def test_library_entry_is_frozen_dataclass() -> None:
 
     entry = LibraryEntry(name="x", type="file", rel_path="x", is_audio=True, size=10)
     with pytest.raises(dataclasses.FrozenInstanceError):
-        entry.name = "y"  # pyright: ignore[reportAttributeAccessIssue]
+        entry.name = "y"  # ty: ignore[invalid-assignment]

@@ -239,9 +239,10 @@ def test_render_summary_with_empty_results() -> None:
 
     from rich.console import Console
 
-    console = Console(file=io.StringIO(), width=120, force_terminal=False, color_system=None)
+    buf = io.StringIO()
+    console = Console(file=buf, width=120, force_terminal=False, color_system=None)
     render_summary([], console=console)
-    out = console.file.getvalue()  # type: ignore[attr-defined]
+    out = buf.getvalue()
     assert "Files" in out
 
 

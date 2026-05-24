@@ -159,7 +159,7 @@ def _bandpass_sos(
             f"(0, {nyquist}) for sample_rate={sample_rate}"
         )
         raise ValueError(msg)
-    sos: NDArray[np.float64] = _sps.butter(  # pyright: ignore[reportAssignmentType]
+    sos: NDArray[np.float64] = _sps.butter(
         order,
         [low, high],
         btype="band",

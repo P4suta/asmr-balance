@@ -77,7 +77,14 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def _domain_handler(request: Request, exc: DomainError) -> JSONResponse:
+# Starlette's ``add_exception_handler`` signature requires handlers to accept
+# the broad ``Exception`` type (function-arg variance). We register each
+# handler against a concrete ``exc_class`` so the runtime narrowing is
+# guaranteed, but the type annotations stay at ``Exception`` to satisfy
+# starlette's stub. ``isinstance`` re-narrowing is cheap and explicit.
+async def _domain_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, DomainError):  # pragma: no cover -- starlette dispatch guarantees this
+        raise TypeError(exc)
     trace_id = _trace_id_of(request)
     _log.warning(
         "domain_error",
@@ -98,8 +105,10 @@ async def _domain_handler(request: Request, exc: DomainError) -> JSONResponse:
 
 async def _http_exception_handler(
     request: Request,
-    exc: StarletteHTTPException,
+    exc: Exception,
 ) -> JSONResponse:
+    if not isinstance(exc, StarletteHTTPException):  # pragma: no cover
+        raise TypeError(exc)
     trace_id = _trace_id_of(request)
     _log.info(
         "http_exception",
@@ -123,8 +132,10 @@ _STATUS_INTERNAL: Final[int] = 500
 
 async def _validation_handler(
     request: Request,
-    exc: RequestValidationError,
+    exc: Exception,
 ) -> JSONResponse:
+    if not isinstance(exc, RequestValidationError):  # pragma: no cover
+        raise TypeError(exc)
     trace_id = _trace_id_of(request)
     errors = exc.errors()
     _log.warning(

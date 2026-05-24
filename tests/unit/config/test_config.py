@@ -30,7 +30,7 @@ def test_config_is_frozen() -> None:
 
 def test_config_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError):
-        Config(mystery_field=1)  # type: ignore[call-arg]
+        Config(mystery_field=1)  # ty: ignore[unknown-argument]
 
 
 def test_with_overrides_returns_new_instance() -> None:
