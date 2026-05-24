@@ -188,9 +188,12 @@ class ScanFileEvent(BaseModel):
     elapsed_sec: float
     flag_codes: tuple[str, ...]
     record_status: str
+    delta_lu_db: float | None
+    """Signed ΔLU (L − R) — ``None`` for SKIPPED / ERRORED records."""
 
     @classmethod
     def from_file_result(cls, result: FileResult, *, sequence: int, total: int) -> Self:
+        delta_lu = result.record.loudness.delta_lu if result.record.loudness else None
         return cls(
             sequence=sequence,
             total=total,
@@ -199,6 +202,7 @@ class ScanFileEvent(BaseModel):
             elapsed_sec=result.elapsed_sec,
             flag_codes=tuple(f.code for f in result.flags),
             record_status=result.record.status.value,
+            delta_lu_db=delta_lu,
         )
 
 

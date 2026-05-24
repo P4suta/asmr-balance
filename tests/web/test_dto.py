@@ -143,3 +143,17 @@ def test_scan_file_event_from_file_result(balanced_wav: Path) -> None:
     assert event.total == 5
     assert event.source_name == "balanced.wav"
     assert event.verdict == result.verdict.name
+    assert event.delta_lu_db is not None  # balanced wav: ANALYZED → ΔLU present
+
+
+def test_scan_file_event_from_skipped_record(mono_wav: Path) -> None:
+    # Mono files are SKIPPED; loudness subtree is None, so delta_lu_db
+    # must serialize as None instead of crashing.
+    from asmr_balance.config.model import Config
+    from asmr_balance.scan.pipeline import scan_one
+    from asmr_balance.web.dto import ScanFileEvent
+
+    result = scan_one(mono_wav, Config().with_overrides(workers=1))
+    event = ScanFileEvent.from_file_result(result, sequence=1, total=1)
+    assert event.record_status == "skipped"
+    assert event.delta_lu_db is None
