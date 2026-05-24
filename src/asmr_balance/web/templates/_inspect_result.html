@@ -1,5 +1,8 @@
 {% set verdict = response.verdict %}
 {% set analyzed = response.record.status == 'analyzed' %}
+{% macro chip(severity) -%}
+  <span class="chip chip--{{ severity.name|lower }}">{{ severity.name }}</span>
+{%- endmacro %}
 <article class="result-card">
   <header class="result-card__header">
     <h3 class="result-card__title">{{ response.source_name }}</h3>
@@ -7,78 +10,264 @@
     <small class="elapsed">{{ '%.2f'|format(response.elapsed_sec) }} s</small>
   </header>
 
-  {% if response.flags %}
-    <ul class="flags">
-      {% for flag in response.flags %}
-        <li class="flag flag--{{ flag.severity|lower }}">
-          <code class="flag__code">{{ flag.code }}</code>
-          <span class="flag__msg">{{ flag.message }}</span>
-        </li>
+  <section class="diagnosis diagnosis--{{ diagnosis.verdict.name|lower }}"
+           aria-label="診断結果">
+    <h4 class="diagnosis__headline">{{ diagnosis.headline }}</h4>
+    <p class="diagnosis__summary">{{ diagnosis.summary }}</p>
+  </section>
+
+  {% if analyzed and insights.balance %}
+  <section class="dash dash--balance">
+    <h4 class="dash__title">ステレオバランス</h4>
+
+    {# pan bar — center = 50%, marker placement maps [-100, +100] → [0%, 100%] #}
+    {% set pan = insights.balance %}
+    {% set marker_left = (pan.pan_offset_pct + 100) * 0.5 %}
+    <div class="pan-meter">
+      <div class="pan-meter__scale">
+        <span class="pan-meter__edge">L</span>
+        <span class="pan-meter__center">中央</span>
+        <span class="pan-meter__edge">R</span>
+      </div>
+      <div class="pan-meter__track">
+        <div class="pan-meter__zone pan-meter__zone--ok"></div>
+        <div class="pan-meter__center-line"></div>
+        <span class="pan-meter__marker pan-meter__marker--{{ pan.pan_severity.name|lower }}"
+              style="left: {{ '%.2f'|format(marker_left) }}%"></span>
+      </div>
+      <div class="pan-meter__caption">
+        {{ chip(pan.pan_severity) }}
+        <strong>{{ pan.pan_label }}</strong>
+        <small>{{ pan.pan_reference }}</small>
+      </div>
+    </div>
+
+    <div class="sub-metrics">
+      <div class="sub-metric sub-metric--{{ pan.stability_severity.name|lower }}">
+        <span class="sub-metric__icon">⏱</span>
+        <div>
+          <div class="sub-metric__title">安定性</div>
+          <div class="sub-metric__label">{{ chip(pan.stability_severity) }} {{ pan.stability_label }}</div>
+        </div>
+      </div>
+      <div class="sub-metric sub-metric--{{ pan.image_severity.name|lower }}">
+        <span class="sub-metric__icon">🎧</span>
+        <div>
+          <div class="sub-metric__title">立体感</div>
+          <div class="sub-metric__label">{{ chip(pan.image_severity) }} {{ pan.image_label }}</div>
+          <div class="sub-metric__ref">{{ pan.image_reference }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if analyzed and insights.loudness %}
+  <section class="dash dash--loudness">
+    <h4 class="dash__title">ラウドネス</h4>
+    {% set ln = insights.loudness %}
+    {# Place a marker on a scale from -36 LUFS (left) to 0 LUFS (right). #}
+    {% set marker_left = ((ln.integrated_lufs + 36) / 36 * 100) %}
+    {% if marker_left < 0 %}{% set marker_left = 0 %}{% endif %}
+    {% if marker_left > 100 %}{% set marker_left = 100 %}{% endif %}
+    <div class="lufs-meter">
+      <div class="lufs-meter__scale">
+        <span style="left: 0%;">−36</span>
+        <span style="left: {{ '%.2f'|format(((-23 + 36) / 36 * 100)) }}%;">−23<br><small>ASMR</small></span>
+        <span style="left: {{ '%.2f'|format(((-16 + 36) / 36 * 100)) }}%;">−16<br><small>Podcast</small></span>
+        <span style="left: {{ '%.2f'|format(((-14 + 36) / 36 * 100)) }}%;">−14<br><small>Spotify</small></span>
+        <span style="left: 100%;">0</span>
+      </div>
+      <div class="lufs-meter__track">
+        <div class="lufs-meter__band lufs-meter__band--asmr"
+             style="left: {{ '%.2f'|format(((-30 + 36) / 36 * 100)) }}%;
+                    width: {{ '%.2f'|format(((-18 - -30) / 36 * 100)) }}%;"></div>
+        <span class="lufs-meter__marker lufs-meter__marker--{{ ln.target_severity.name|lower }}"
+              style="left: {{ '%.2f'|format(marker_left) }}%"></span>
+      </div>
+      <div class="lufs-meter__caption">
+        {{ chip(ln.target_severity) }}
+        <strong>{{ ln.target_label }}</strong>
+        <small>あなた: {{ '%.1f'|format(ln.integrated_lufs) }} LUFS</small>
+      </div>
+    </div>
+
+    <div class="sub-metrics">
+      <div class="sub-metric sub-metric--{{ ln.dynamics_severity.name|lower }}">
+        <span class="sub-metric__icon">📈</span>
+        <div>
+          <div class="sub-metric__title">抑揚 (LRA)</div>
+          <div class="sub-metric__label">{{ chip(ln.dynamics_severity) }} {{ ln.dynamics_label }}</div>
+          <div class="sub-metric__ref">{{ ln.dynamics_reference }}</div>
+        </div>
+      </div>
+      <div class="sub-metric sub-metric--{{ ln.psr_severity.name|lower }}">
+        <span class="sub-metric__icon">🎚</span>
+        <div>
+          <div class="sub-metric__title">音の性質 (PSR)</div>
+          <div class="sub-metric__label">{{ chip(ln.psr_severity) }} {{ ln.psr_label }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if analyzed and insights.headroom %}
+  <section class="dash dash--headroom">
+    <h4 class="dash__title">クリップリスク</h4>
+    {% set hr = insights.headroom %}
+    <div class="headroom-meter">
+      <div class="headroom-meter__track">
+        <div class="headroom-meter__zone headroom-meter__zone--safe"></div>
+        <div class="headroom-meter__zone headroom-meter__zone--warn"></div>
+        <div class="headroom-meter__zone headroom-meter__zone--fail"></div>
+        <span class="headroom-meter__marker headroom-meter__marker--{{ hr.severity.name|lower }}"
+              style="left: {{ '%.2f'|format(100 - hr.headroom_fill_pct) }}%"></span>
+      </div>
+      <div class="headroom-meter__scale">
+        <span>≤ −6 dBTP<br><small>安全</small></span>
+        <span>−1 dBTP<br><small>警告</small></span>
+        <span>0 dBTP<br><small>クリップ</small></span>
+      </div>
+      <div class="headroom-meter__caption">
+        {{ chip(hr.severity) }}
+        <strong>{{ hr.risk_label }}</strong>
+        <small>ヘッドルーム残: {{ '%.1f'|format(hr.headroom_db) }} dB</small>
+      </div>
+    </div>
+
+    <div class="sub-metrics">
+      <div class="sub-metric sub-metric--{{ hr.channel_status_severity.name|lower }}">
+        <span class="sub-metric__icon">🔊</span>
+        <div>
+          <div class="sub-metric__title">チャンネル状態</div>
+          <div class="sub-metric__label">{{ chip(hr.channel_status_severity) }} {{ hr.channel_status_label }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if analyzed and insights.tone %}
+  <section class="dash dash--tone">
+    <h4 class="dash__title">音色バランス (低中高)</h4>
+    {% set tn = insights.tone %}
+    <div class="tone-grid">
+      {% for region in tn.regions %}
+        <div class="tone-region tone-region--{{ region.severity.name|lower }}">
+          <div class="tone-region__name">{{ region.name }}</div>
+          <div class="tone-region__bar">
+            {% set width = ((region.imbalance_db|abs) / 12 * 50) %}
+            {% if width > 50 %}{% set width = 50 %}{% endif %}
+            <span class="tone-region__bar-center"></span>
+            <span class="tone-region__bar-fill {% if region.imbalance_db > 0 %}tone-region__bar-fill--l{% else %}tone-region__bar-fill--r{% endif %}"
+                  style="width: {{ '%.2f'|format(width) }}%"></span>
+          </div>
+          <div class="tone-region__label">{{ region.label }}</div>
+        </div>
       {% endfor %}
-    </ul>
-  {% else %}
-    <p class="flags-empty">フラグ発火なし</p>
+    </div>
+    {% if tn.most_imbalanced_label %}
+      <div class="tone-callout tone-callout--{{ tn.most_imbalanced_severity.name|lower }}">
+        <span class="tone-callout__icon">📍</span>
+        <span>最大偏差: <strong>{{ tn.most_imbalanced_label }}</strong></span>
+      </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if diagnosis.findings %}
+    <section class="findings" aria-label="見つかった問題">
+      <h4 class="section-title">
+        見つかった問題 <span class="section-count">({{ diagnosis.findings|length }} 件)</span>
+      </h4>
+      <ul class="finding-list">
+        {% for f in diagnosis.findings %}
+          <li class="finding finding--{{ f.severity.name|lower }}">
+            <header class="finding__head">
+              <span class="finding__title">{{ f.title }}</span>
+              <span class="verdict verdict--{{ f.severity.name|lower }}">{{ f.severity.name }}</span>
+            </header>
+            <p class="finding__explanation">{{ f.explanation }}</p>
+            <p class="finding__recommendation">
+              <span class="finding__rec-label">どう直す</span>
+              {{ f.recommendation }}
+            </p>
+            <small class="finding__ref"><code>{{ f.technical_ref }}</code></small>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% elif analyzed %}
+    <p class="findings-empty">— 11 ルールすべて pass —</p>
   {% endif %}
 
   {% if analyzed %}
-    <section class="kpi-grid" aria-label="主要 metric">
-      {% set kpi = [
-        ('Integrated ΔLU', '%+.2f LU'|format(flat['loudness.delta_lu'])),
-        ('Sliding max', '%+.2f LU'|format(flat['sliding.max_lu'])),
-        ('Sliding p95', '%+.2f LU'|format(flat['sliding.p95_lu'])),
-        ('LRA',           '%.2f LU' |format(flat['lra.lra_lu'])),
-        ('True peak max', '%+.2f dBTP'|format(flat['dynamics.true_peak_dbtp_max'])),
-        ('Pearson r',     '%.3f'    |format(flat['correlation.pearson_r'])),
-      ] %}
-      {% for label, value in kpi %}
-        <div class="kpi">
-          <div class="kpi__label">{{ label }}</div>
-          <div class="kpi__value">{{ value }}</div>
-        </div>
-      {% endfor %}
-    </section>
+    <details class="raw-details">
+      <summary>🔬 詳細データ (raw metric / Plotly チャート)</summary>
 
-    <section class="charts" aria-label="charts">
-      <div id="chart-band" class="chart chart--wide"></div>
-      <div id="chart-true-peak" class="chart"></div>
-      <div id="chart-sliding" class="chart"></div>
-    </section>
-
-    <script>
-      (() => {
-        if (typeof Plotly === 'undefined') return;
-        const figures = {
-          band:      {{ figures['band']      | tojson }},
-          truePeak:  {{ figures['true_peak'] | tojson }},
-          sliding:   {{ figures['sliding']   | tojson }},
-        };
-        const opts = { responsive: true, displayModeBar: false };
-        Plotly.newPlot('chart-band',      figures.band.data,     figures.band.layout,     opts);
-        Plotly.newPlot('chart-true-peak', figures.truePeak.data, figures.truePeak.layout, opts);
-        Plotly.newPlot('chart-sliding',   figures.sliding.data,  figures.sliding.layout,  opts);
-      })();
-    </script>
-  {% else %}
-    <p class="skip-notice">
-      <strong>{{ response.record.status }}</strong>
-      — {{ response.record.skip_reason or 'no reason given' }}
-    </p>
-  {% endif %}
-
-  <details class="metrics-details">
-    <summary>全 metric を表示 ({{ flat|length }} columns)</summary>
-    <table class="metrics-table">
-      <thead><tr><th scope="col">field</th><th scope="col">value</th></tr></thead>
-      <tbody>
-        {% for col, value in flat.items() %}
-          {% if value is not none and not col.startswith('band.third_octave.') %}
-            <tr>
-              <td><code>{{ col }}</code></td>
-              <td>{{ value }}</td>
-            </tr>
-          {% endif %}
+      <section class="kpi-grid" aria-label="生 metric">
+        {% set kpi = [
+          ('Integrated ΔLU', '%+.2f LU'|format(flat['loudness.delta_lu'])),
+          ('Sliding max',    '%+.2f LU'|format(flat['sliding.max_lu'])),
+          ('Sliding p95',    '%+.2f LU'|format(flat['sliding.p95_lu'])),
+          ('LRA',            '%.2f LU' |format(flat['lra.lra_lu'])),
+          ('True peak max',  '%+.2f dBTP'|format(flat['dynamics.true_peak_dbtp_max'])),
+          ('Pearson r',      '%.3f'    |format(flat['correlation.pearson_r'])),
+        ] %}
+        {% for label, value in kpi %}
+          <div class="kpi">
+            <div class="kpi__label">{{ label }}</div>
+            <div class="kpi__value">{{ value }}</div>
+          </div>
         {% endfor %}
-      </tbody>
-    </table>
-  </details>
+      </section>
+
+      <section class="charts" aria-label="charts">
+        <div id="chart-band" class="chart chart--wide"></div>
+        <div id="chart-true-peak" class="chart"></div>
+        <div id="chart-sliding" class="chart"></div>
+      </section>
+
+      <script>
+        (() => {
+          if (typeof Plotly === 'undefined') return;
+          const figures = {
+            band:      {{ figures['band']      | tojson }},
+            truePeak:  {{ figures['true_peak'] | tojson }},
+            sliding:   {{ figures['sliding']   | tojson }},
+          };
+          const opts = { responsive: true, displayModeBar: false };
+          const details = document.currentScript && document.currentScript.closest('details');
+          let rendered = false;
+          const render = () => {
+            if (rendered) return;
+            rendered = true;
+            Plotly.newPlot('chart-band',      figures.band.data,     figures.band.layout,     opts);
+            Plotly.newPlot('chart-true-peak', figures.truePeak.data, figures.truePeak.layout, opts);
+            Plotly.newPlot('chart-sliding',   figures.sliding.data,  figures.sliding.layout,  opts);
+          };
+          if (!details || details.open) {
+            render();
+          } else {
+            details.addEventListener('toggle', () => { if (details.open) render(); });
+          }
+        })();
+      </script>
+
+      <table class="metrics-table">
+        <thead><tr><th scope="col">field</th><th scope="col">value</th></tr></thead>
+        <tbody>
+          {% for col, value in flat.items() %}
+            {% if value is not none and not col.startswith('band.third_octave.') %}
+              <tr>
+                <td><code>{{ col }}</code></td>
+                <td>{{ value }}</td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  {% endif %}
 </article>

@@ -44,28 +44,43 @@ def test_inspect_partial_returns_html(client: TestClient, panned_wav: Path) -> N
     )
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    text = response.text.lower()
-    assert "verdict" in text
-    assert "lr_balance" in text or "lr-balance" in text
-    # Phase 2: KPI tiles + chart divs rendered for ANALYZED records.
-    assert "kpi-grid" in text
+    text = response.text
+    # Phase 2.5: diagnosis hero leads.
+    assert "diagnosis" in text
+    # Insights dashboards present — 4 sections (balance / loudness / headroom / tone).
+    assert "dash--balance" in text
+    assert "dash--loudness" in text
+    assert "dash--headroom" in text
+    assert "dash--tone" in text
+    # Pan meter / LUFS meter / headroom gauge / tone grid markup rendered.
+    assert "pan-meter" in text
+    assert "lufs-meter" in text
+    assert "headroom-meter" in text
+    assert "tone-grid" in text
+    # Findings + recommendations.
+    assert "見つかった問題" in text
+    assert "どう直す" in text
+    # Raw data still available under disclosure.
+    assert "raw-details" in text
     assert "chart-band" in text
-    assert "chart-true-peak" in text
-    assert "chart-sliding" in text
+    # technical_ref still includes the original rule code.
+    assert "LR_BALANCE" in text
 
 
-def test_inspect_partial_for_skipped_record_omits_charts(
+def test_inspect_partial_for_skipped_record_shows_unanalyzable_diagnosis(
     client: TestClient, mono_wav: Path
 ) -> None:
     response = _post_inspect(
         client, path=mono_wav, filename="mono.wav", endpoint="/api/inspect/partial"
     )
     assert response.status_code == 200
-    text = response.text.lower()
-    assert "skip-notice" in text
-    # No chart divs (and the script that initializes Plotly is gated on
-    # ``analyzed`` in the template).
+    text = response.text
+    assert "diagnosis" in text
+    assert "対象外" in text
+    # No dashboards / charts / KPI for skipped records (every insight is None).
+    assert "dash--balance" not in text
     assert "chart-band" not in text
+    assert "kpi-grid" not in text
 
 
 def test_inspect_rejects_unsupported_suffix(client: TestClient) -> None:

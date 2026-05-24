@@ -29,6 +29,8 @@ from asmr_balance.web.dto import INSPECT_ERROR_RESPONSES, InspectResponse
 from asmr_balance.web.use_cases.inspect import perform_inspect
 from asmr_balance.web.views import (
     band_imbalance_figure,
+    derive_inspect_insights,
+    diagnose,
     sliding_delta_figure,
     true_peak_figure,
 )
@@ -97,5 +99,7 @@ async def inspect_partial(
             "response": InspectResponse.from_file_result(result, source_name=source_name),
             "flat": result_to_flat_row(result),
             "figures": _figures_for(result.record),
+            "diagnosis": diagnose(result),
+            "insights": derive_inspect_insights(result.record),
         },
     )

@@ -4,7 +4,7 @@ Each function takes the relevant domain subtree (and any threshold context)
 and returns a :class:`ChartFigure` — a frozen dataclass with ``data`` and
 ``layout`` ready to feed ``Plotly.newPlot(div, data, layout)`` in the browser.
 
-The builders never touch I/O, templates, or HTTP. Routes serialise the
+The builders never touch I/O, templates, or HTTP. Routes serialize the
 figure via :meth:`ChartFigure.to_plotly_json` and embed it in HTML for
 client-side hydration.
 """
