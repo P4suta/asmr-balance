@@ -51,6 +51,8 @@ site/
 # Reports / generated artifacts
 *.parquet
 *.html
+# Templates are package data — keep them tracked even though *.html is ignored.
+!src/asmr_balance/web/templates/*.html
 report/
 report.parquet
 report.html
@@ -64,5 +66,5 @@ CHANGELOG.md
 # OS
 Thumbs.db
 
-# Claude Code session artefacts
+# Claude Code session artifacts
 .claude/

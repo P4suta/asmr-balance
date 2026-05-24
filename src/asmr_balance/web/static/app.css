@@ -1,0 +1,201 @@
+:root {
+  --bg: #0f1115;
+  --fg: #e8e8ea;
+  --muted: #8a8d96;
+  --accent: #5aa9ff;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --fail: #f87171;
+  --card: #1a1d24;
+  --border: #2a2d36;
+  --font: system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
+    "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  line-height: 1.6;
+}
+
+a { color: var(--accent); }
+
+.site-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.site-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+.site-header h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+.site-header .tagline {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.inspect-pane h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+.hint {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.drop-zone:hover,
+.drop-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(90, 169, 255, 0.05);
+}
+.drop-zone__label {
+  font-weight: 600;
+  color: var(--muted);
+}
+.drop-zone input[type="file"] {
+  margin-top: 0.75rem;
+  color: var(--muted);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+button[type="submit"] {
+  padding: 0.5rem 1.5rem;
+  background: var(--accent);
+  color: #0a0a0a;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+button[type="submit"]:hover { filter: brightness(1.1); }
+
+.busy {
+  display: none;
+  color: var(--muted);
+}
+.busy.htmx-request { display: inline-block; }
+
+.result-card {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.result-card__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.result-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+.elapsed {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.verdict {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+.verdict--ok   { background: rgba(74, 222, 128, 0.15);  color: var(--ok); }
+.verdict--warn { background: rgba(251, 191, 36, 0.15);  color: var(--warn); }
+.verdict--fail { background: rgba(248, 113, 113, 0.18); color: var(--fail); }
+
+.flags {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+.flag {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 6px;
+  margin-bottom: 0.35rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+.flag--ok   { border-left: 3px solid var(--ok); }
+.flag--warn { border-left: 3px solid var(--warn); }
+.flag--fail { border-left: 3px solid var(--fail); }
+.flag__code { color: var(--accent); font-family: var(--mono); font-size: 0.85rem; }
+.flag__msg { color: var(--fg); }
+
+.flags-empty {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.metrics-details {
+  margin-top: 1rem;
+}
+.metrics-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  user-select: none;
+}
+
+.metrics-table {
+  width: 100%;
+  margin-top: 0.75rem;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.metrics-table th,
+.metrics-table td {
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.metrics-table td:last-child {
+  text-align: right;
+  font-family: var(--mono);
+}
+.metrics-table code { font-family: var(--mono); font-size: 0.8rem; }

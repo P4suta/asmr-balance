@@ -1,0 +1,38 @@
+{% set verdict = response.verdict %}
+<article class="result-card">
+  <header class="result-card__header">
+    <h3 class="result-card__title">{{ response.source_name }}</h3>
+    <span class="verdict verdict--{{ verdict|lower }}">{{ verdict }}</span>
+    <small class="elapsed">{{ '%.2f'|format(response.elapsed_sec) }} s</small>
+  </header>
+
+  {% if response.flags %}
+    <ul class="flags">
+      {% for flag in response.flags %}
+        <li class="flag flag--{{ flag.severity|lower }}">
+          <code class="flag__code">{{ flag.code }}</code>
+          <span class="flag__msg">{{ flag.message }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="flags-empty">フラグ発火なし</p>
+  {% endif %}
+
+  <details class="metrics-details">
+    <summary>全 metric を表示 ({{ flat|length }} columns)</summary>
+    <table class="metrics-table">
+      <thead><tr><th scope="col">field</th><th scope="col">value</th></tr></thead>
+      <tbody>
+        {% for col, value in flat.items() %}
+          {% if value is not none and not col.startswith('band.third_octave.') %}
+            <tr>
+              <td><code>{{ col }}</code></td>
+              <td>{{ value }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</article>

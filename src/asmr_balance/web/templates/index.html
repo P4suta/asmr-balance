@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}asmr-balance — Inspect{% endblock %}
+
+{% block content %}
+<section class="inspect-pane" aria-labelledby="inspect-heading">
+  <h2 id="inspect-heading">Inspect — 1 file</h2>
+  <p class="hint">音声ファイル (.wav / .flac / .mp3 / .mp4 / …) を選択またはドラッグ &amp; ドロップ。</p>
+
+  <form
+    id="inspect-form"
+    hx-post="/api/inspect/partial"
+    hx-target="#result-area"
+    hx-swap="innerHTML"
+    hx-encoding="multipart/form-data"
+    hx-indicator="#busy"
+  >
+    <label class="drop-zone" for="file-input">
+      <span class="drop-zone__label">クリック or ドロップ</span>
+      <input
+        id="file-input"
+        name="file"
+        type="file"
+        accept=".wav,.flac,.ogg,.opus,.aiff,.aif,.au,.mp4,.mkv,.webm,.m4a,.mov,.mp3,.aac"
+        required
+      >
+    </label>
+    <div class="form-row">
+      <button type="submit">解析</button>
+      <span id="busy" class="busy">解析中…</span>
+    </div>
+  </form>
+
+  <section id="result-area" aria-live="polite"></section>
+</section>
+{% endblock %}

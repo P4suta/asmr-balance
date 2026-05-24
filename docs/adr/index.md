@@ -17,3 +17,4 @@
 | 0011 | [Signal DAG redesign (Filter / Reducer)](0011-signal-dag-redesign.md) | Accepted |
 | 0012 | [Rule algebra + Verdict semilattice](0012-rule-algebra-verdict-semilattice.md) | Accepted |
 | 0013 | [DSP science upgrade (TruePeak / LRA / PSR / 1/3-octave)](0013-dsp-science-upgrade.md) | Accepted |
+| 0014 | [Web frontend as primary interface, layered into HTTP / use case / DTO](0014-web-frontend-layering.md) | Accepted |
