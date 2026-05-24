@@ -207,6 +207,15 @@ def test_fmt_lu_handles_nan_and_inf() -> None:
     assert _fmt_lu(-1.25) == "-1.25 LU"
 
 
+def test_dedup_actions_collapses_identical_recommendations() -> None:
+    from asmr_balance.web.views.diagnosis import _dedup_actions
+
+    a = Finding(title="a", severity=Verdict.WARN, explanation="", recommendation="同じ手", technical_ref="")
+    b = Finding(title="b", severity=Verdict.WARN, explanation="", recommendation="同じ手", technical_ref="")
+    c = Finding(title="c", severity=Verdict.WARN, explanation="", recommendation="別の手", technical_ref="")
+    assert _dedup_actions([a, b, c]) == ("同じ手", "別の手")
+
+
 # ---------------------------------------------------------------------------
 # actions dedup
 # ---------------------------------------------------------------------------
