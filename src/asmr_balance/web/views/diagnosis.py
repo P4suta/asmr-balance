@@ -58,8 +58,8 @@ class Diagnosis:
 # ----------------------------------------------------------------------
 # Per-flag interpretation
 # ----------------------------------------------------------------------
-def _fmt_lu(value: float | None) -> str:
-    if value is None or not math.isfinite(value):
+def _fmt_lu(value: float) -> str:
+    if not math.isfinite(value):
         return "—"
     return f"{value:+.2f} LU"
 

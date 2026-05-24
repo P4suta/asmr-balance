@@ -178,6 +178,35 @@ def test_errored_record_produces_failure_diagnosis() -> None:
     assert "ValueError" in d.summary
 
 
+def test_skipped_record_with_no_reason_falls_back_to_default_label() -> None:
+    # Covers the ``record.skip_reason or "詳細不明"`` fallback when the
+    # reason string is missing entirely.
+    meta = FileMeta(
+        file_path=Path("/tmp/x.wav"),
+        sample_rate=48000,
+        duration_sec=1.0,
+        channel_layout="stereo",
+    )
+    record = MetricRecord(meta=meta, status=ScanStatus.SKIPPED, skip_reason=None)
+    result = FileResult(record=record, flags=(), verdict=Verdict.OK, elapsed_sec=0.0)
+    d = diagnose(result)
+    assert d.is_analyzable is False
+    assert "詳細不明" in d.summary
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers — branch coverage for the _fmt_lu non-finite path
+# ---------------------------------------------------------------------------
+def test_fmt_lu_handles_nan_and_inf() -> None:
+    from asmr_balance.web.views.diagnosis import _fmt_lu
+
+    assert _fmt_lu(float("nan")) == "—"
+    assert _fmt_lu(float("inf")) == "—"
+    assert _fmt_lu(float("-inf")) == "—"
+    assert _fmt_lu(3.5) == "+3.50 LU"
+    assert _fmt_lu(-1.25) == "-1.25 LU"
+
+
 # ---------------------------------------------------------------------------
 # actions dedup
 # ---------------------------------------------------------------------------
