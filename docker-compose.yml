@@ -17,11 +17,18 @@ x-app-env: &app-env
   UV_LINK_MODE: copy
   UV_PROJECT_ENVIRONMENT: /opt/venv
   HYPOTHESIS_PROFILE: ${HYPOTHESIS_PROFILE:-dev}
+  # Default is 8; bump for faster cold ``uv sync`` (NIC-bound).
+  UV_NETWORK_CONCURRENCY: "16"
 
 x-app-volumes: &app-volumes
   - .:/app
   - uv-cache:/root/.cache/uv
   - venv:/opt/venv
+  # pre-commit caches each hook's environment under /root/.cache/pre-commit.
+  # Without a named volume this gets rebuilt on every fresh ``docker compose
+  # run`` (~10s for the ``typos`` hook). Persisted volume makes ``just typos``
+  # near-instant on subsequent invocations.
+  - precommit-cache:/root/.cache/pre-commit
 
 services:
   app:
@@ -58,3 +65,4 @@ volumes:
   uv-cache:
   venv:
   web-reports:
+  precommit-cache:
