@@ -34,7 +34,7 @@ def test_threshold_subtree_is_frozen() -> None:
 
 def test_threshold_subtree_forbids_extra() -> None:
     with pytest.raises(ValidationError):
-        PseudoMonoThresholds(pearson_r=0.5, mystery=1)  # type: ignore[call-arg]
+        PseudoMonoThresholds(pearson_r=0.5, mystery=1)  # ty: ignore[unknown-argument]
 
 
 def test_threshold_set_partial_override() -> None:

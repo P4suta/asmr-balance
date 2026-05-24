@@ -26,7 +26,7 @@ def test_layout_policy_values() -> None:
 def test_source_is_frozen() -> None:
     s = Source(meta=_meta(), n_channels=2, block_samples=4800, layout_policy=LayoutPolicy.DOWNMIX)
     with pytest.raises(AttributeError):
-        s.n_channels = 3  # type: ignore[misc]
+        s.n_channels = 3  # ty: ignore[invalid-assignment]
 
 
 def test_skip_mono_default_reason() -> None:

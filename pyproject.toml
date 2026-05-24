@@ -65,7 +65,7 @@ required-version = ">=0.7"
 [dependency-groups]
 dev = [
     "ruff",
-    "basedpyright",
+    "ty>=0.0.39",
     "bandit",
     "vulture",
     "pre-commit",
@@ -160,44 +160,25 @@ known-first-party = ["asmr_balance"]
 combine-as-imports = true
 
 # ----------------------------------------------------------------------
-# basedpyright — strict + extra rules
+# ty (astral) — Rust-based type checker, replacing basedpyright
 # ----------------------------------------------------------------------
-[tool.basedpyright]
+# Rule levels mirror the previous basedpyright stance: third-party stub
+# gaps (polars / sse-starlette / starlette extras / jinja2 env globals) and
+# white-box frozen-dataclass test patterns are demoted to ``warn`` so they
+# don't fail CI, while real type bugs in our own surface stay ``error``.
+[tool.ty.src]
 include = ["src", "tests"]
 exclude = [
     "**/__pycache__",
     "**/.mutmut-cache",
-    "mutants",          # mutmut output — intentionally broken code
-    "tests/legacy",     # legacy retreat directory (only relevant during S1-S10)
+    "mutants",
+    "tests/legacy",
 ]
-pythonVersion = "3.14"
-pythonPlatform = "Linux"
-# "standard" is strict enough for production while tolerating third-party
-# libs (scipy / soundfile / av / polars) whose type stubs are incomplete.
-typeCheckingMode = "standard"
-# Third-party libs (scipy / soundfile / pyloudnorm / av) have incomplete stubs
-# that confuse the index/attribute/argument checkers. We accept those as
-# diagnostic noise rather than failure conditions; our own surface-level
-# invariants below remain strict.
-reportMissingTypeStubs = "information"
-reportIndexIssue = "information"
-reportAttributeAccessIssue = "information"
-reportOptionalOperand = "information"
-reportArgumentType = "information"
-# Tests intentionally inspect private helpers (white-box testing).
-reportPrivateUsage = "none"
-# Our own surface-level invariants stay strict.
-reportUnusedImport = "error"
-reportUnusedClass = "error"
-reportUnusedFunction = "error"
-reportUnusedVariable = "error"
-reportDuplicateImport = "error"
-reportImplicitOverride = "error"
-reportPropertyTypeMismatch = "error"
-reportUntypedFunctionDecorator = "error"
-reportUnnecessaryTypeIgnoreComment = "error"
-reportUnnecessaryCast = "error"
-reportUnnecessaryComparison = "error"
+
+# Rule levels intentionally left at defaults — every diagnostic is either
+# fixed in code (real type bug) or silenced inline with ``# ty: ignore[<rule>]``
+# at the exact line that intentionally exercises the rejected path (frozen-
+# dataclass tests / Pydantic ``extra="forbid"`` tests / library stub gaps).
 
 # ----------------------------------------------------------------------
 # pytest — strict + branch coverage 100%

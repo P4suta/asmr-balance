@@ -96,7 +96,7 @@ Web UI は `workers=1` で sequential (SSE 進捗が自然に流れるため —
 
 ```bash
 just dev         # quick loop: fmt + lint + typos + fast tests
-just lint        # ruff + basedpyright + bandit + vulture + defensive grep
+just lint        # ruff + ty + bandit + vulture + defensive grep
 just cov         # pytest --cov-branch --cov-fail-under=100
 just prop        # hypothesis property tests (semilattice law / IIR type-state / parity)
 just regression  # pyloudnorm ±0.1 LU parity at 44.1 / 48 / 88.2 / 96 / 192 kHz

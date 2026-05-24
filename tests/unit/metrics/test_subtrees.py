@@ -53,7 +53,7 @@ def test_loudness_metrics_forbids_extra_fields() -> None:
             single_channel_lufs_ungated_r=-17.0,
             delta_lu=0.0,
             delta_lu_ungated=0.0,
-            mystery_field=0.0,  # type: ignore[call-arg]
+            mystery_field=0.0,  # ty: ignore[unknown-argument]
         )
 
 

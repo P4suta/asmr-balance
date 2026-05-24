@@ -132,7 +132,10 @@ class HtmlSink:
         if not self._opened:
             return
         env = Environment(loader=BaseLoader(), autoescape=select_autoescape(["html"]))
-        env.globals["_fmt"] = _fmt
+        # ``env.globals`` is typed as a narrow Union in jinja2's stubs but
+        # accepts any callable / value at runtime — passing a project-defined
+        # formatter is the canonical jinja2 pattern.
+        env.globals["_fmt"] = _fmt  # ty: ignore[invalid-assignment]
         template = env.from_string(_TEMPLATE)
         x_labels = [Path(r["meta.file_path"]).name for r in self._rows]
         y_values = [r["loudness.delta_lu"] for r in self._rows]

@@ -31,7 +31,7 @@ def _lowpass_sos(order: int, cutoff_hz: float, sample_rate: int) -> tuple[tuple[
     if not (0.0 < cutoff_hz < nyquist):
         msg = f"cutoff_hz must satisfy 0 < {cutoff_hz} < {nyquist} (Nyquist)"
         raise ValueError(msg)
-    sos: NDArray[np.float64] = _sps.butter(  # pyright: ignore[reportAssignmentType]
+    sos: NDArray[np.float64] = _sps.butter(
         order,
         cutoff_hz,
         btype="low",

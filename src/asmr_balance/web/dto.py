@@ -103,7 +103,7 @@ class LibraryEntryDto(BaseModel):
     def from_entry(cls, entry: LibraryEntry) -> Self:
         return cls(
             name=entry.name,
-            type=entry.type,  # pyright: ignore[reportArgumentType] -- runtime str narrowed by domain
+            type=entry.type,
             rel_path=entry.rel_path,
             is_audio=entry.is_audio,
             size=entry.size,

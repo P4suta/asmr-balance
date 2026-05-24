@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import numpy as np
@@ -25,19 +26,22 @@ def _stereo_wav(path: Path) -> Path:
     return path
 
 
-def _io_console() -> Console:
-    """Plain-text console for assertable output capture."""
-    import io
+def _io_console() -> tuple[Console, io.StringIO]:
+    """Plain-text console + the buffer behind it, so tests can read output.
 
-    return Console(file=io.StringIO(), width=200, force_terminal=False, color_system=None)
+    Returning the buffer alongside the Console sidesteps the typeshed
+    ``IO[str]`` stub gap (no ``.getvalue``) without per-call casts.
+    """
+    buf = io.StringIO()
+    return Console(file=buf, width=200, force_terminal=False, color_system=None), buf
 
 
 def test_render_summary_emits_table(tmp_path: Path) -> None:
     src = _stereo_wav(tmp_path / "a.wav")
     result = scan_one(src, Config())
-    console = _io_console()
+    console, buf = _io_console()
     render_summary([result], console=console)
-    output = console.file.getvalue()  # type: ignore[attr-defined]
+    output = buf.getvalue()
     assert "a.wav" in output
     assert "Pearson" in output
 
@@ -45,9 +49,9 @@ def test_render_summary_emits_table(tmp_path: Path) -> None:
 def test_render_inspect_analyzed_file(tmp_path: Path) -> None:
     src = _stereo_wav(tmp_path / "x.wav")
     result = scan_one(src, Config())
-    console = _io_console()
+    console, buf = _io_console()
     render_inspect(result, console=console)
-    output = console.file.getvalue()  # type: ignore[attr-defined]
+    output = buf.getvalue()
     assert "x.wav" in output
     assert "loudness.lufs_i_stereo" in output
 
@@ -57,9 +61,9 @@ def test_render_inspect_skipped_file(tmp_path: Path) -> None:
     p = tmp_path / "mono.wav"
     sf.write(str(p), np.zeros((4800, 1), dtype=np.float32), 48000, subtype="FLOAT")
     result = scan_one(p, Config())
-    console = _io_console()
+    console, buf = _io_console()
     render_inspect(result, console=console)
-    output = console.file.getvalue()  # type: ignore[attr-defined]
+    output = buf.getvalue()
     assert "skipped" in output
     assert "mono" in output
 
@@ -67,15 +71,17 @@ def test_render_inspect_skipped_file(tmp_path: Path) -> None:
 def test_tui_summary_sink_writes_results(tmp_path: Path) -> None:
     src = _stereo_wav(tmp_path / "a.wav")
     result = scan_one(src, Config())
-    sink = TuiSummarySink(console=_io_console())
+    console, buf = _io_console()
+    sink = TuiSummarySink(console=console)
     sink.open()
     sink.write(result)
     sink.close()
-    output = sink.console.file.getvalue()  # type: ignore[attr-defined]
+    output = buf.getvalue()
     assert "a.wav" in output
 
 
 def test_inspect_renderer_class() -> None:
     """Smoke test the class wrapper."""
-    r = InspectRenderer(console=_io_console())
+    console, _buf = _io_console()
+    r = InspectRenderer(console=console)
     assert r.console is not None

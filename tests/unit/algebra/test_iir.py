@@ -100,11 +100,11 @@ def test_steady_filter_is_frozen() -> None:
     factory = IIRFactory(sos=_trivial_lpf_sos())
     steady = factory.build().prime(first_sample=1.0)
     with pytest.raises(AttributeError):
-        steady.sos = factory.sos  # type: ignore[misc]
+        steady.sos = factory.sos  # ty: ignore[invalid-assignment]
 
 
 def test_uninitialised_filter_is_frozen() -> None:
     factory = IIRFactory(sos=_trivial_lpf_sos())
     f = factory.build()
     with pytest.raises(AttributeError):
-        f.sos = factory.sos  # type: ignore[misc]
+        f.sos = factory.sos  # ty: ignore[invalid-assignment]

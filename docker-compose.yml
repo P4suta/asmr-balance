@@ -35,8 +35,11 @@ services:
     <<: *app-base
     environment: *app-env
     volumes: *app-volumes
-    stdin_open: true
-    tty: true
+    # Long-running so ``docker compose exec`` (used by every Justfile recipe)
+    # can reach it without paying the ``run --rm`` container-start tax
+    # (~0.5s × n commands). Drop into an interactive shell via ``just shell``.
+    command: tail -f /dev/null
+    restart: unless-stopped
 
   web:
     <<: *app-base

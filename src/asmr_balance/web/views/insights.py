@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import cast
 
 from asmr_balance.algebra.semilattice import Verdict
 from asmr_balance.metrics.record import MetricRecord
@@ -335,13 +336,12 @@ def derive_tone(record: MetricRecord) -> ToneBalanceInsight | None:
             continue
         buckets[_region_of(spec.center_hz)].append(value)
 
-    regions = tuple(
-        _build_region(name, values)
-        for name, values in (
-            ("bass", buckets["bass"]),
-            ("mid", buckets["mid"]),
-            ("treble", buckets["treble"]),
-        )
+    # Explicit 3-tuple (rather than ``tuple(..for..)`` generator) so the type
+    # is ``tuple[ToneRegion, ToneRegion, ToneRegion]`` and matches the DTO.
+    regions = (
+        _build_region("bass", buckets["bass"]),
+        _build_region("mid", buckets["mid"]),
+        _build_region("treble", buckets["treble"]),
     )
 
     # Find the single most imbalanced 1/3-oct band for the marquee callout.
@@ -364,7 +364,7 @@ def derive_tone(record: MetricRecord) -> ToneBalanceInsight | None:
         most_severity = _tone_severity(worst[2])
 
     return ToneBalanceInsight(
-        regions=regions,  # pyright: ignore[reportArgumentType] -- exactly 3 items by construction
+        regions=regions,
         most_imbalanced_label=most_label,
         most_imbalanced_severity=most_severity,
     )
@@ -380,8 +380,9 @@ def _build_region(name: str, values: list[float]) -> ToneRegion:
         )
     # Energy-weighted mean is more representative than arithmetic mean for
     # this band — but for the user-facing label, the worst-band magnitude
-    # within the region is the most diagnostic.
-    worst = max(values, key=abs)
+    # within the region is the most diagnostic. ``cast`` because ``max(...,
+    # key=abs)`` infers a wider union than ``float`` when ``key`` is set.
+    worst = cast("float", max(values, key=abs))
     severity = _tone_severity(abs(worst))
     label = _tone_label(_REGION_LABELS[name], worst, severity)
     return ToneRegion(

@@ -50,4 +50,4 @@ def test_metric_record_is_frozen() -> None:
 
 def test_metric_record_forbids_extra_fields() -> None:
     with pytest.raises(ValidationError):
-        MetricRecord(meta=_meta(), status=ScanStatus.SKIPPED, mystery="x")  # type: ignore[call-arg]
+        MetricRecord(meta=_meta(), status=ScanStatus.SKIPPED, mystery="x")  # ty: ignore[unknown-argument]
