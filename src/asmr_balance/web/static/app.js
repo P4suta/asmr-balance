@@ -9,16 +9,47 @@
 (() => {
   "use strict";
 
-  // ---- palette (mirrors app.css for inline chart definitions) -------
-  const PALETTE = {
-    ok: "#4ade80",
-    warn: "#fbbf24",
-    fail: "#f87171",
-    neutral: "#5aa9ff",
-    fg: "#e8e8ea",
-    border: "rgba(255,255,255,0.08)",
-  };
+  // ---- palette (read live from CSS variables so charts follow theme) -
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const livePalette = () => ({
+    ok: css("--ok"),
+    warn: css("--warn"),
+    fail: css("--fail"),
+    neutral: css("--accent"),
+    fg: css("--fg"),
+    border: css("--zone-grid"),
+  });
+  let PALETTE = livePalette();
   const PLOTLY_OPTS = { responsive: true, displayModeBar: false };
+  // Single source of truth for verdict copy (mirrors Jinja2 ``verdict_label``).
+  const VERDICT_LABELS = { OK: "問題なし", WARN: "注意", FAIL: "要確認" };
+  const verdictLabel = (name) => VERDICT_LABELS[name] || name;
+
+  // ---- theme toggle (light / dark / system) -------------------------
+  const THEMES = ["system", "light", "dark"];
+  const THEME_ICONS = { system: "🖥", light: "☀", dark: "🌙" };
+  const THEME_STORAGE = "asmr-balance-theme";
+  const themeBtn = document.getElementById("theme-toggle");
+  const applyTheme = (t) => {
+    document.documentElement.dataset.theme = t;
+    if (themeBtn) themeBtn.textContent = THEME_ICONS[t] || THEME_ICONS.system;
+    PALETTE = livePalette();
+  };
+  applyTheme(localStorage.getItem(THEME_STORAGE) || "system");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme || "system";
+      const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+      localStorage.setItem(THEME_STORAGE, next);
+      applyTheme(next);
+    });
+  }
+  // Follow OS theme changes in real-time when in "system" mode.
+  window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    if ((document.documentElement.dataset.theme || "system") === "system") {
+      PALETTE = livePalette();
+    }
+  });
 
   // ---- tabs ----------------------------------------------------------
   const tabs = document.querySelectorAll("[data-tab]");
@@ -39,40 +70,97 @@
     tab.addEventListener("click", () => activateTab(tab.dataset.tab)),
   );
 
-  // ---- inspect drop-zone --------------------------------------------
-  const drop = document.querySelector(".drop-zone");
-  const input = document.getElementById("file-input");
+  // ---- inspect form: drop zone state machine + elapsed tick ---------
+  // States: empty → ready (file picked) → analyzing → done.
+  // CSS handles visibility via [data-state]; JS only flips the attribute
+  // and fills in dynamic copy (filename / size / elapsed).
   const inspectForm = document.getElementById("inspect-form");
-  if (drop && input && inspectForm) {
+  const inspectInput = document.getElementById("file-input");
+  const inspectDrop = inspectForm && inspectForm.querySelector(".drop-zone");
+  const inspectResultArea = document.getElementById("inspect-result-area");
+
+  const formatBytes = (n) => {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const fillFileMeta = (selector, file) => {
+    if (!inspectForm) return;
+    const target = inspectForm.querySelector(selector);
+    if (!target) return;
+    target.querySelectorAll(".drop-zone__file-name").forEach((el) => {
+      el.textContent = file.name;
+    });
+    target.querySelectorAll(".drop-zone__file-detail").forEach((el) => {
+      el.textContent = formatBytes(file.size);
+    });
+  };
+
+  const setState = (state) => {
+    if (!inspectForm) return;
+    inspectForm.dataset.state = state;
+  };
+
+  const resetInspect = () => {
+    if (!inspectForm || !inspectInput) return;
+    inspectInput.value = "";
+    setState("empty");
+    if (inspectResultArea) inspectResultArea.innerHTML = "";
+    stopInspectTick();
+  };
+
+  if (inspectForm && inspectInput && inspectDrop) {
+    // File picker change (manual click or after drop).
+    inspectInput.addEventListener("change", () => {
+      const file = inspectInput.files && inspectInput.files[0];
+      if (!file) {
+        setState("empty");
+        return;
+      }
+      fillFileMeta(".drop-zone__file", file);
+      setState("ready");
+    });
+
+    // Drag-and-drop handling.
     const stop = (e) => {
       e.preventDefault();
       e.stopPropagation();
     };
     ["dragenter", "dragover"].forEach((evt) =>
-      drop.addEventListener(evt, (e) => {
+      inspectDrop.addEventListener(evt, (e) => {
         stop(e);
-        drop.classList.add("dragover");
+        if (inspectForm.dataset.state === "empty" || inspectForm.dataset.state === "ready") {
+          inspectDrop.classList.add("dragover");
+        }
       }),
     );
     ["dragleave", "drop"].forEach((evt) =>
-      drop.addEventListener(evt, (e) => {
+      inspectDrop.addEventListener(evt, (e) => {
         stop(e);
-        drop.classList.remove("dragover");
+        inspectDrop.classList.remove("dragover");
       }),
     );
-    drop.addEventListener("drop", (e) => {
+    inspectDrop.addEventListener("drop", (e) => {
       const files = e.dataTransfer && e.dataTransfer.files;
       if (!files || files.length === 0) return;
-      input.files = files;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      inspectForm.requestSubmit();
+      // Block drop during analysis to avoid race.
+      if (inspectForm.dataset.state === "analyzing") return;
+      inspectInput.files = files;
+      inspectInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    // Reset buttons (any data-action="reset" inside the drop zone).
+    inspectForm.addEventListener("click", (e) => {
+      const target = e.target.closest('[data-action="reset"]');
+      if (!target) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resetInspect();
     });
   }
 
-  // ---- inspect elapsed-time tick (HTMX-driven) ----------------------
-  // Polls the wall clock every 100ms during the request so the user sees
-  // movement instead of a frozen "解析中…" string. Tied into htmx events.
-  const inspectBusy = document.getElementById("inspect-busy");
+  // Elapsed-time tick on the analyzing state (HTMX-driven).
   let inspectTickHandle = null;
   let inspectStartedAt = 0;
   const stopInspectTick = () => {
@@ -81,22 +169,47 @@
       inspectTickHandle = null;
     }
   };
+  const setElapsedText = (text) => {
+    if (!inspectForm) return;
+    inspectForm.querySelectorAll(".drop-zone__elapsed").forEach((el) => {
+      el.textContent = text;
+    });
+  };
   const tickInspect = () => {
-    if (!inspectBusy) return;
-    const elapsed = ((performance.now() - inspectStartedAt) / 1000).toFixed(1);
-    inspectBusy.textContent = `解析中… ${elapsed}s`;
+    setElapsedText(`${((performance.now() - inspectStartedAt) / 1000).toFixed(1)}s`);
   };
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (e.detail.elt === inspectForm) {
+      // Snapshot the file into the analyzing state.
+      const file = inspectInput && inspectInput.files && inspectInput.files[0];
+      if (file) {
+        fillFileMeta(".drop-zone__progress", file);
+        fillFileMeta(".drop-zone__done", file);
+      }
       inspectStartedAt = performance.now();
       tickInspect();
       inspectTickHandle = setInterval(tickInspect, 100);
+      setState("analyzing");
     }
   });
   document.body.addEventListener("htmx:afterRequest", (e) => {
     if (e.detail.elt === inspectForm) {
       stopInspectTick();
-      if (inspectBusy) inspectBusy.textContent = "解析中…";  // reset for next run
+      const elapsed = ((performance.now() - inspectStartedAt) / 1000).toFixed(2);
+      if (e.detail.successful) {
+        // Show total elapsed alongside the filename in the done card.
+        const file = inspectInput && inspectInput.files && inspectInput.files[0];
+        if (inspectForm) {
+          const doneCard = inspectForm.querySelector(".drop-zone__done");
+          if (doneCard && file) {
+            const detail = doneCard.querySelector(".drop-zone__file-detail");
+            if (detail) detail.textContent = `${formatBytes(file.size)} · 解析所要 ${elapsed}s`;
+          }
+        }
+        setState("done");
+      } else {
+        setState("ready");
+      }
     }
   });
 
@@ -183,14 +296,14 @@
           {
             type: "pie",
             hole: 0.55,
-            labels: ["OK", "WARN", "FAIL"],
+            labels: [verdictLabel("OK"), verdictLabel("WARN"), verdictLabel("FAIL")],
             values: [0, 0, 0],
             marker: { colors: [PALETTE.ok, PALETTE.warn, PALETTE.fail] },
             textposition: "inside",
             hovertemplate: "%{label}: %{value} (%{percent})<extra></extra>",
           },
         ],
-        sharedLayout("Verdict distribution", { showlegend: true, legend: { orientation: "h", y: -0.1 } }),
+        sharedLayout("視聴判定の内訳", { showlegend: true, legend: { orientation: "h", y: -0.1 } }),
         PLOTLY_OPTS,
       );
     }
@@ -208,8 +321,8 @@
             hovertemplate: "#%{x} %{text}: %{y:+.2f} LU<extra></extra>",
           },
         ],
-        sharedLayout("Per-file ΔLU (signed)", {
-          xaxis: { title: "File index", gridcolor: PALETTE.border },
+        sharedLayout("ファイルごとの ΔLU", {
+          xaxis: { title: "ファイル番号", gridcolor: PALETTE.border },
           yaxis: { title: "ΔLU", zeroline: true, zerolinecolor: PALETTE.border, gridcolor: PALETTE.border },
         }),
         PLOTLY_OPTS,
@@ -291,7 +404,7 @@
     row.innerHTML = `
       <td>${payload.sequence}</td>
       <td><code>${escapeHtml(payload.source_name)}</code></td>
-      <td><span class="verdict verdict--${payload.verdict.toLowerCase()}">${payload.verdict}</span></td>
+      <td><span class="verdict verdict--${payload.verdict.toLowerCase()}">${escapeHtml(verdictLabel(payload.verdict))}</span></td>
       <td>${payload.elapsed_sec.toFixed(2)}s</td>
       <td>${payload.flag_codes.length}</td>
     `;

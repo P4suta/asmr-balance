@@ -1,4 +1,5 @@
 :root {
+  /* Dark palette is the default when no theme attribute is set. */
   --bg: #0f1115;
   --fg: #e8e8ea;
   --muted: #8a8d96;
@@ -8,9 +9,90 @@
   --fail: #f87171;
   --card: #1a1d24;
   --border: #2a2d36;
+  --surface-soft: rgba(255, 255, 255, 0.03);
+  --surface-softer: rgba(255, 255, 255, 0.02);
+  --surface-strong: rgba(255, 255, 255, 0.06);
+  --zone-line: rgba(255, 255, 255, 0.25);
+  --zone-grid: rgba(255, 255, 255, 0.08);
+  --ok-tint: rgba(74, 222, 128, 0.15);
+  --warn-tint: rgba(251, 191, 36, 0.15);
+  --fail-tint: rgba(248, 113, 113, 0.18);
+  --accent-tint: rgba(90, 169, 255, 0.15);
   --font: system-ui, -apple-system, "Segoe UI", "Helvetica Neue",
     "Hiragino Sans", "Noto Sans JP", sans-serif;
   --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: dark;
+}
+
+/* Explicit dark — mirror :root for clarity when user picks "dark". */
+[data-theme="dark"] {
+  --bg: #0f1115;
+  --fg: #e8e8ea;
+  --muted: #8a8d96;
+  --accent: #5aa9ff;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --fail: #f87171;
+  --card: #1a1d24;
+  --border: #2a2d36;
+  --surface-soft: rgba(255, 255, 255, 0.03);
+  --surface-softer: rgba(255, 255, 255, 0.02);
+  --surface-strong: rgba(255, 255, 255, 0.06);
+  --zone-line: rgba(255, 255, 255, 0.25);
+  --zone-grid: rgba(255, 255, 255, 0.08);
+  --ok-tint: rgba(74, 222, 128, 0.15);
+  --warn-tint: rgba(251, 191, 36, 0.15);
+  --fail-tint: rgba(248, 113, 113, 0.18);
+  --accent-tint: rgba(90, 169, 255, 0.15);
+  color-scheme: dark;
+}
+
+/* Light palette — explicit choice. */
+[data-theme="light"] {
+  --bg: #ffffff;
+  --fg: #1a1d24;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --ok: #15803d;
+  --warn: #b45309;
+  --fail: #b91c1c;
+  --card: #f6f7f9;
+  --border: #e3e6eb;
+  --surface-soft: rgba(0, 0, 0, 0.03);
+  --surface-softer: rgba(0, 0, 0, 0.015);
+  --surface-strong: rgba(0, 0, 0, 0.05);
+  --zone-line: rgba(0, 0, 0, 0.25);
+  --zone-grid: rgba(0, 0, 0, 0.08);
+  --ok-tint: rgba(21, 128, 61, 0.12);
+  --warn-tint: rgba(180, 83, 9, 0.12);
+  --fail-tint: rgba(185, 28, 28, 0.12);
+  --accent-tint: rgba(37, 99, 235, 0.12);
+  color-scheme: light;
+}
+
+/* System — follow the OS preference. */
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    --bg: #ffffff;
+    --fg: #1a1d24;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --ok: #15803d;
+    --warn: #b45309;
+    --fail: #b91c1c;
+    --card: #f6f7f9;
+    --border: #e3e6eb;
+    --surface-soft: rgba(0, 0, 0, 0.03);
+    --surface-softer: rgba(0, 0, 0, 0.015);
+    --surface-strong: rgba(0, 0, 0, 0.05);
+    --zone-line: rgba(0, 0, 0, 0.25);
+    --zone-grid: rgba(0, 0, 0, 0.08);
+    --ok-tint: rgba(21, 128, 61, 0.12);
+    --warn-tint: rgba(180, 83, 9, 0.12);
+    --fail-tint: rgba(185, 28, 28, 0.12);
+    --accent-tint: rgba(37, 99, 235, 0.12);
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -26,9 +108,13 @@ body {
 a { color: var(--accent); }
 
 .site-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid var(--border);
 }
+.site-header__main { flex: 1 1 auto; }
 .site-header h1 {
   margin: 0;
   font-size: 1.4rem;
@@ -42,6 +128,31 @@ a { color: var(--accent); }
   margin: 0.25rem 0 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.theme-toggle {
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  background: var(--surface-strong);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 main {
@@ -62,28 +173,130 @@ main {
 }
 
 .drop-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
+  display: block;
+  padding: 1.25rem 1.5rem;
   border: 2px dashed var(--border);
   border-radius: 12px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, padding 0.18s ease;
 }
 .drop-zone:hover,
 .drop-zone.dragover {
   border-color: var(--accent);
-  background: rgba(90, 169, 255, 0.05);
+  background: var(--accent-tint);
 }
-.drop-zone__label {
+
+/* Larger placeholder zone when there is no file yet. */
+.inspect-form[data-state="empty"] .drop-zone {
+  padding: 3rem;
+}
+
+/* Visibility driven by parent ``data-state``. */
+.inspect-form[data-state="empty"]    .drop-zone__empty    { display: flex; }
+.inspect-form[data-state="ready"]    .drop-zone__file     { display: flex; }
+.inspect-form[data-state="analyzing"] .drop-zone__progress { display: flex; }
+.inspect-form[data-state="done"]     .drop-zone__done     { display: flex; }
+
+/* Submit button only matters when a file is ready to analyze. */
+.inspect-form .submit-analyze { display: none; }
+.inspect-form[data-state="ready"] .submit-analyze { display: inline-block; }
+
+/* When analysis is done the drop zone shrinks visually. */
+.inspect-form[data-state="done"] .drop-zone,
+.inspect-form[data-state="analyzing"] .drop-zone {
+  cursor: default;
+}
+.inspect-form[data-state="done"] .drop-zone {
+  border-style: solid;
+  border-color: var(--ok);
+  background: var(--ok-tint);
+}
+.inspect-form[data-state="analyzing"] .drop-zone {
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+/* --- drop zone state contents -------------------------------------- */
+.drop-zone__empty {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.drop-zone__icon { font-size: 2rem; }
+.drop-zone__placeholder {
   font-weight: 600;
   color: var(--muted);
 }
-.drop-zone input[type="file"] {
-  margin-top: 0.75rem;
+
+.drop-zone__file,
+.drop-zone__progress,
+.drop-zone__done {
+  display: none;
+  align-items: center;
+  gap: 1rem;
+}
+.drop-zone__file-icon { font-size: 1.6rem; flex-shrink: 0; }
+
+.drop-zone__file-meta,
+.drop-zone__progress-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.drop-zone__file-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drop-zone__file-detail,
+.drop-zone__progress-status {
   color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.drop-zone__progress-bar-wrap {
+  margin-top: 0.5rem;
+}
+.indeterminate-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: var(--surface-strong);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.indeterminate-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: var(--accent);
+  border-radius: 999px;
+  animation: indet-slide 1.1s ease-in-out infinite;
+}
+@keyframes indet-slide {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+
+.drop-zone__reset {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.drop-zone__reset:hover { border-color: var(--accent); color: var(--accent); }
+.drop-zone__reset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .form-row {
@@ -105,25 +318,9 @@ button[type="submit"] {
 }
 button[type="submit"]:hover { filter: brightness(1.1); }
 
-.busy {
-  display: none;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.busy.htmx-request { display: inline-flex; }
-.busy.htmx-request::before {
-  content: "";
-  width: 0.9em;
-  height: 0.9em;
-  border: 2px solid var(--accent);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-/* Reusable spinner glyph for client-rendered progress (scan tab). */
+/* Reusable spinner glyph for client-rendered progress (scan tab spinner
+   still wanted on the per-file row because there's no clean indeterminate
+   bar location there). */
 .spinner {
   display: inline-block;
   width: 0.85em;

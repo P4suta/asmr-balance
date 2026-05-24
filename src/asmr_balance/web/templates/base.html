@@ -5,13 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}asmr-balance{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+  {# Apply persisted theme before paint to avoid the dark→light flash. #}
+  <script>
+    (() => {
+      const t = localStorage.getItem("asmr-balance-theme") || "system";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" defer></script>
 </head>
 <body>
   <header class="site-header">
-    <h1><a href="/">asmr-balance</a></h1>
-    <p class="tagline">ASMR 視聴前チェッカー · ITU-R BS.1770-5 ベース</p>
+    <div class="site-header__main">
+      <h1><a href="/">asmr-balance</a></h1>
+      <p class="tagline">ASMR 視聴前チェッカー · ITU-R BS.1770-5 ベース</p>
+    </div>
+    <button
+      type="button"
+      class="theme-toggle"
+      id="theme-toggle"
+      aria-label="テーマ切り替え"
+      title="テーマ切り替え (Light / Dark / System)"
+    >🖥</button>
   </header>
   <main>{% block content %}{% endblock %}</main>
   <script src="{{ url_for('static', path='app.js') }}" defer></script>
