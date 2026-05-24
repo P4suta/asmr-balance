@@ -1,9 +1,12 @@
-# asmr-balance — all recipes route through `docker compose run` so they
-# reproduce CI exactly on any developer machine.
+# asmr-balance — all recipes route through a long-running ``docker compose
+# exec`` so that the per-command container-start tax (~0.5s × n) is paid
+# exactly once at ``just dev-up`` (or implicitly via any aggregator
+# recipe). The persistent service is defined in docker-compose.yml.
 #
 # Categories:
 #   bootstrap   …  one-shot env setup, docker build, hook install
-#   fmt / lint  …  static checks (ruff / basedpyright / bandit / vulture / typos)
+#   dev-up/down …  persistent app container lifecycle
+#   fmt / lint  …  static checks (ruff / ty / bandit / vulture / typos)
 #   test       …  pytest matrix
 #   run        …  CLI shortcuts (scan, inspect, schema)
 #   docs/release …  documentation + release tooling
@@ -15,16 +18,31 @@
 set shell := ["bash", "-cu"]
 set dotenv-load := true
 
-DC := "docker compose run --rm app"
+DC := "docker compose exec -T app"
 
 [private]
 default:
     @just --list --unsorted
 
+# --- dev container lifecycle -----------------------------------------
+
+# Start the persistent ``app`` container. Subsequent ``docker compose exec``
+# calls skip the container-start tax. Idempotent — running while up is no-op.
+dev-up:
+    @docker compose up -d app >/dev/null
+
+# Stop the persistent ``app`` container (named volumes preserved).
+dev-down:
+    docker compose stop app
+
+# Drop into an interactive shell on the persistent app container.
+shell: dev-up
+    docker compose exec -it app bash
+
 # --- bootstrap --------------------------------------------------------
 
 # Build the image, install Python deps, and wire up git hooks.
-bootstrap: docker-build hooks-install
+bootstrap: docker-build dev-up hooks-install
     {{DC}} uv sync --all-groups
 
 docker-build:
@@ -34,18 +52,21 @@ docker-build:
 
 # `just fmt` applies auto-fixes (ruff --fix) AND format. ユーザー要望: 機械
 # 修正は default で適用、手動レビューが必要なものだけ残す。
-fmt:
-    {{DC}} uv run ruff check . --fix
-    {{DC}} uv run ruff format .
+fmt: dev-up
+    {{DC}} bash -ceu 'uv run ruff check . --fix && uv run ruff format .'
 
 lint: lint-static lint-defensive typos
 
-lint-static:
-    {{DC}} uv run ruff check .
-    {{DC}} uv run ruff format --check .
-    {{DC}} uv run basedpyright --level error .
-    {{DC}} uv run bandit -c pyproject.toml -r src
-    {{DC}} uv run vulture src --min-confidence 70
+# Batched into one ``bash -ceu`` so we pay the docker-exec round-trip
+# (~0.1-0.2s) once instead of five times. Fail-fast preserved via ``set -e``.
+# Type checker is ``ty`` (astral) — see ``[tool.ty]`` in pyproject.toml.
+lint-static: dev-up
+    {{DC}} bash -ceu '\
+        uv run ruff check . && \
+        uv run ruff format --check . && \
+        uv run ty check && \
+        uv run bandit -c pyproject.toml -r src && \
+        uv run vulture src --min-confidence 70'
 
 lint-defensive:
     @echo "→ defensive grep gates (host rg)"
@@ -63,34 +84,38 @@ lint-defensive:
 # Run typos against the whole repo via the pre-commit hook (so the binary is
 # managed by pre-commit's cache — no need to install crate-ci/typos on the
 # host or in the project image).
-typos:
+typos: dev-up
     {{DC}} uv run pre-commit run typos --all-files
 
 # --- test -------------------------------------------------------------
 
-test:
-    {{DC}} uv run pytest -m "not bench and not slow"
+# Inner-loop test suite. ``property`` tests are excluded because Hypothesis
+# shrink+example phases add ~7s and they're better suited to ``just prop``
+# (or the full ``just cov``) — they catch algebraic-law regressions, not
+# the kind of bugs you fix in inner dev iteration.
+test: dev-up
+    {{DC}} uv run pytest -m "not bench and not slow and not property"
 
-cov:
+cov: dev-up
     {{DC}} uv run pytest
 
-prop:
+prop: dev-up
     HYPOTHESIS_PROFILE=ci {{DC}} uv run pytest tests/property -m property
 
-regression:
+regression: dev-up
     {{DC}} uv run pytest tests/regression -m regression
 
-e2e:
+e2e: dev-up
     {{DC}} uv run pytest tests/e2e -m e2e
 
-mutate:
+mutate: dev-up
     {{DC}} uv run mutmut run
     {{DC}} uv run mutmut results
 
-audit:
+audit: dev-up
     {{DC}} uv run pip-audit
 
-bench:
+bench: dev-up
     {{DC}} uv run pytest tests/bench --benchmark-only -m bench
 
 # --- run --------------------------------------------------------------
@@ -115,7 +140,7 @@ inspect FILE *FLAGS:
       docker compose run --rm -v "$MNT:$MNT:ro" app \
         uv run asmr-balance inspect "$ABS" {{FLAGS}}
 
-schema *FLAGS:
+schema *FLAGS: dev-up
     {{DC}} uv run asmr-balance schema {{FLAGS}}
 
 # --- web -------------------------------------------------------------
@@ -143,7 +168,7 @@ web-reset:
 # --- hooks (Lefthook + pre-commit) -----------------------------------
 
 # Install both Lefthook (fast, parallel) and pre-commit (CI-canonical) hooks.
-hooks-install:
+hooks-install: dev-up
     @echo "→ installing pre-commit hooks"
     {{DC}} uv run pre-commit install --install-hooks
     {{DC}} uv run pre-commit install --hook-type commit-msg
@@ -153,19 +178,19 @@ hooks-install:
 # Alias for the umbrella hooks command.
 hooks: hooks-install
 
-upgrade-hooks:
+upgrade-hooks: dev-up
     {{DC}} uv run pre-commit autoupdate
 
 # --- docs / release ---------------------------------------------------
 
-docs:
+docs: dev-up
     {{DC}} uv run mkdocs build
     {{DC}} uv run pdoc src/asmr_balance -o docs/api
 
-changelog:
+changelog: dev-up
     {{DC}} uv run git-cliff -o CHANGELOG.md
 
-sbom:
+sbom: dev-up
     {{DC}} uv run cyclonedx-py environment -o bom.json
 
 # --- CI aggregate -----------------------------------------------------
@@ -174,12 +199,13 @@ ci: lint cov prop regression e2e audit
     @echo "✓ all gates green"
 
 # Quick developer-loop check: format + lint + fast tests + typos.
-dev: fmt lint-static lint-defensive typos test
+# Brings up the persistent app container once, then exec'd recipes follow.
+dev: dev-up fmt lint-static lint-defensive typos test
     @echo "✓ dev gate green"
 
 # --- maintenance ------------------------------------------------------
 
 clean:
-    rm -rf .pytest_cache .ruff_cache .basedpyright .mutmut-cache .hypothesis \
+    rm -rf .pytest_cache .ruff_cache .mutmut-cache .hypothesis \
            .coverage coverage.xml htmlcov dist build *.egg-info \
            docs/api site report report.parquet report.html bom.json
