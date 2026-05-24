@@ -139,7 +139,8 @@ def test_headroom_for_balanced_is_safe(balanced_wav: Path) -> None:
     assert insight is not None
     # Synthetic sines have predictable, well below 0 dBTP peaks → safe.
     assert insight.severity is Verdict.OK
-    assert "安全" in insight.risk_label
+    # Listener-friendly label: "どんな機材でも安心して再生できます"
+    assert "安心" in insight.risk_label
     assert 0 <= insight.headroom_fill_pct <= 100
     assert insight.channel_status_severity is Verdict.OK
     assert "両チャンネル" in insight.channel_status_label
@@ -268,10 +269,11 @@ def test_loudness_target_label_buckets(lufs: float, expected_severity: Verdict) 
     ("lra", "expected_severity"),
     [
         (float("nan"), Verdict.WARN),
-        (3.0, Verdict.WARN),  # compressed
-        (8.0, Verdict.OK),  # normal
-        (15.0, Verdict.OK),  # ASMR rich
-        (25.0, Verdict.WARN),  # extreme
+        # Listener pivot: low LRA = "就寝視聴・BGM 向き" → OK (not a problem)
+        (3.0, Verdict.OK),
+        (8.0, Verdict.OK),  # 適度な抑揚
+        (15.0, Verdict.OK),  # ASMR らしい強弱
+        (25.0, Verdict.WARN),  # 極端 — ボリューム調整が忙しい
     ],
 )
 def test_dynamics_label_buckets(lra: float, expected_severity: Verdict) -> None:
@@ -385,8 +387,8 @@ def test_build_region_handles_empty_bucket() -> None:
 
 def test_build_region_picks_worst_band() -> None:
     region = _build_region("treble", [1.0, -5.0, 2.0])
-    # max(by abs) is -5.0 → R bias
-    assert "R" in region.label
+    # max(by abs) is -5.0 → 右耳寄り (negative imbalance_db)
+    assert "右" in region.label
     assert region.severity is Verdict.WARN
 
 

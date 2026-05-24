@@ -57,9 +57,9 @@ def test_inspect_partial_returns_html(client: TestClient, panned_wav: Path) -> N
     assert "lufs-meter" in text
     assert "headroom-meter" in text
     assert "tone-grid" in text
-    # Findings + recommendations.
-    assert "見つかった問題" in text
-    assert "どう直す" in text
+    # Findings + recommendations (listener-framed copy).
+    assert "視聴時に注意したい点" in text
+    assert "視聴のコツ" in text
     # Raw data still available under disclosure.
     assert "raw-details" in text
     assert "chart-band" in text

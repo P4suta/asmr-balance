@@ -29,7 +29,8 @@ def test_ok_result_yields_ok_headline(balanced_wav: Path) -> None:
     d = diagnose(clean)
     assert d.verdict is Verdict.OK
     assert d.headline.startswith("✅")
-    assert "問題なし" in d.headline or "問題なし" in d.summary
+    assert "視聴 OK" in d.headline
+    assert "視聴できます" in d.headline or "視聴できます" in d.summary
     assert d.findings == ()
     assert d.is_analyzable
 
@@ -62,7 +63,9 @@ def test_lr_balance_finding_includes_direction(panned_wav: Path) -> None:
     flag = Flag(code="LR_BALANCE_FAIL", severity=Verdict.FAIL, message="|ΔLU|=12.00 ≥ 6.0")
     wrapped = _wrap_with_flag(result, flag, Verdict.FAIL)
     finding = diagnose(wrapped).findings[0]
-    assert "L" in finding.title or "R" in finding.title
+    # Listener-facing title names which ear is louder/quieter.
+    assert "耳" in finding.title
+    assert "左" in finding.title or "右" in finding.title
     assert "12.0" in finding.explanation or "12.00" in finding.explanation
     assert finding.technical_ref == f"{flag.code} · {flag.message}"
 
@@ -89,7 +92,9 @@ def test_phase_inv_finding(balanced_wav: Path) -> None:
     flag = Flag(code="PHASE_INV_WARN", severity=Verdict.WARN, message="coh=-0.5")
     wrapped = _wrap_with_flag(result, flag, Verdict.WARN)
     finding = diagnose(wrapped).findings[0]
-    assert "位相" in finding.title
+    # Listener-framed: speaker playback symptom in title, recommend ヘッドホン.
+    assert "スピーカー" in finding.title or "低音" in finding.title
+    assert "イヤホン" in finding.recommendation or "ヘッドホン" in finding.recommendation
 
 
 def test_mid_side_narrow_finding(balanced_wav: Path) -> None:
@@ -106,8 +111,9 @@ def test_band_bias_finding_labels_each_slot(balanced_wav: Path) -> None:
         flag = Flag(code=code, severity=Verdict.WARN, message=f"{code}=6dB")
         wrapped = _wrap_with_flag(result, flag, Verdict.WARN)
         finding = diagnose(wrapped).findings[0]
-        # Title should mention "L/R 偏り" along with a frequency-range label.
-        assert "偏り" in finding.title
+        # Listener title surfaces a frequency range + the "片耳寄り" outcome.
+        assert "音域" in finding.title  # 低音域 / 中低音域 / 中高音域 / 高音域
+        assert "片耳寄り" in finding.title
 
 
 def test_true_peak_finding_warn_vs_fail(panned_wav: Path) -> None:
@@ -116,8 +122,13 @@ def test_true_peak_finding_warn_vs_fail(panned_wav: Path) -> None:
     fail_flag = Flag(code="TRUE_PEAK_FAIL", severity=Verdict.FAIL, message="+0.2 dBTP")
     warn_finding = diagnose(_wrap_with_flag(result, warn_flag, Verdict.WARN)).findings[0]
     fail_finding = diagnose(_wrap_with_flag(result, fail_flag, Verdict.FAIL)).findings[0]
-    assert "可能性" in warn_finding.explanation
+    # WARN: conditional / softer language. FAIL: definite ("確実").
+    assert "音割れの可能性" in warn_finding.title or "可能性" in warn_finding.title
+    assert "音割れ" in fail_finding.title
     assert "確実" in fail_finding.explanation
+    # Both recommend ボリューム adjustments (listener actions only).
+    assert "ボリューム" in warn_finding.recommendation
+    assert "ボリューム" in fail_finding.recommendation
 
 
 def test_gate_reject_finding() -> None:

@@ -1,15 +1,18 @@
 # asmr-balance
 
-ASMR 音声・動画ファイルの **L/R チャンネル偏り** を ITU-R BS.1770-5 ベースで多軸計測するツール。
-ブラウザ UI と batch CLI の両モードを同じ pipeline で提供。
+**ASMR の視聴前チェッカー**。これから聴く音源を解析して、左右バランス・音量レベル・
+再生機材への適性 (イヤホン推奨か / スピーカーで OK か / 音割れリスクは) を視聴者向けに診断する。
 
-> 全体平均は均衡でも局所的に片側集中する案件、dual mono として配信されてしまった案件、低域 phase 逆相、帯域別の偏り、inter-sample peak で clip する案件 — これらを 30+ の独立 metric と 11 のルールで機械的に検査する。
+> 「ステレオと表記されているのに実はモノラル」「片耳寄りで聞こえる」「スピーカー再生で
+> 低音が消える」「大音量再生で音割れする」 — こうした視聴体験に直結する問題を、
+> ITU-R BS.1770-5 ベースの 30+ metric と 11 ルールで自動検出。
 >
-> ASMR でよく使われる **96 / 192 kHz** ・ **24-bit / 32-bit float** ソースを first-class でサポート (sample rate に関わらず BS.1770 parity を CI で保証)。
+> ASMR でよく流通している **96 / 192 kHz** ・ **24-bit / 32-bit float** ソースを
+> first-class でサポート (sample rate に関わらず BS.1770 parity を CI で保証)。
 
 ## Web UI quickstart (推奨)
 
-ブラウザで使う場合 — Docker Desktop / Docker Engine があれば OS を問わずこの 3 手順:
+視聴前のチェック用途 — Docker Desktop / Docker Engine があれば OS を問わずこの 3 手順:
 
 ```bash
 git clone https://github.com/P4suta/asmr-balance.git
@@ -18,7 +21,8 @@ docker compose up -d --build web   # 初回は数分かかる
 ```
 
 → http://127.0.0.1:8000 をブラウザで開く。
-音声/動画ファイルを **drag & drop** → MetricRecord と flag 一覧が即座に表示される。
+音声 / 動画ファイルを **drag & drop** → 視聴向け診断 (左右バランス / 音量 / 音割れリスク /
+帯域別の偏り) と「視聴時のコツ」が即座に表示される。
 
 ライブラリ全体をスキャンする場合は `ASMR_LIBRARY_PATH` をホスト側パスに設定:
 

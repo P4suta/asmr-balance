@@ -18,7 +18,7 @@
 
   {% if analyzed and insights.balance %}
   <section class="dash dash--balance">
-    <h4 class="dash__title">ステレオバランス</h4>
+    <h4 class="dash__title">左右の聞こえ方</h4>
 
     {# pan bar — center = 50%, marker placement maps [-100, +100] → [0%, 100%] #}
     {% set pan = insights.balance %}
@@ -64,7 +64,7 @@
 
   {% if analyzed and insights.loudness %}
   <section class="dash dash--loudness">
-    <h4 class="dash__title">ラウドネス</h4>
+    <h4 class="dash__title">音量レベル</h4>
     {% set ln = insights.loudness %}
     {# Place a marker on a scale from -36 LUFS (left) to 0 LUFS (right). #}
     {% set marker_left = ((ln.integrated_lufs + 36) / 36 * 100) %}
@@ -114,7 +114,7 @@
 
   {% if analyzed and insights.headroom %}
   <section class="dash dash--headroom">
-    <h4 class="dash__title">クリップリスク</h4>
+    <h4 class="dash__title">再生時の音割れリスク</h4>
     {% set hr = insights.headroom %}
     <div class="headroom-meter">
       <div class="headroom-meter__track">
@@ -150,7 +150,7 @@
 
   {% if analyzed and insights.tone %}
   <section class="dash dash--tone">
-    <h4 class="dash__title">音色バランス (低中高)</h4>
+    <h4 class="dash__title">音色の左右差 (低 / 中 / 高音域)</h4>
     {% set tn = insights.tone %}
     <div class="tone-grid">
       {% for region in tn.regions %}
@@ -177,9 +177,9 @@
   {% endif %}
 
   {% if diagnosis.findings %}
-    <section class="findings" aria-label="見つかった問題">
+    <section class="findings" aria-label="視聴時に注意したい点">
       <h4 class="section-title">
-        見つかった問題 <span class="section-count">({{ diagnosis.findings|length }} 件)</span>
+        視聴時に注意したい点 <span class="section-count">({{ diagnosis.findings|length }} 件)</span>
       </h4>
       <ul class="finding-list">
         {% for f in diagnosis.findings %}
@@ -190,7 +190,7 @@
             </header>
             <p class="finding__explanation">{{ f.explanation }}</p>
             <p class="finding__recommendation">
-              <span class="finding__rec-label">どう直す</span>
+              <span class="finding__rec-label">視聴のコツ</span>
               {{ f.recommendation }}
             </p>
             <small class="finding__ref"><code>{{ f.technical_ref }}</code></small>
@@ -199,7 +199,7 @@
       </ul>
     </section>
   {% elif analyzed %}
-    <p class="findings-empty">— 11 ルールすべて pass —</p>
+    <p class="findings-empty">— 全 11 ルール pass、安心して視聴できます —</p>
   {% endif %}
 
   {% if analyzed %}

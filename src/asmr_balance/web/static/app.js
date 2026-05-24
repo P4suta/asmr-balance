@@ -69,6 +69,37 @@
     });
   }
 
+  // ---- inspect elapsed-time tick (HTMX-driven) ----------------------
+  // Polls the wall clock every 100ms during the request so the user sees
+  // movement instead of a frozen "解析中…" string. Tied into htmx events.
+  const inspectBusy = document.getElementById("inspect-busy");
+  let inspectTickHandle = null;
+  let inspectStartedAt = 0;
+  const stopInspectTick = () => {
+    if (inspectTickHandle !== null) {
+      clearInterval(inspectTickHandle);
+      inspectTickHandle = null;
+    }
+  };
+  const tickInspect = () => {
+    if (!inspectBusy) return;
+    const elapsed = ((performance.now() - inspectStartedAt) / 1000).toFixed(1);
+    inspectBusy.textContent = `解析中… ${elapsed}s`;
+  };
+  document.body.addEventListener("htmx:beforeRequest", (e) => {
+    if (e.detail.elt === inspectForm) {
+      inspectStartedAt = performance.now();
+      tickInspect();
+      inspectTickHandle = setInterval(tickInspect, 100);
+    }
+  });
+  document.body.addEventListener("htmx:afterRequest", (e) => {
+    if (e.detail.elt === inspectForm) {
+      stopInspectTick();
+      if (inspectBusy) inspectBusy.textContent = "解析中…";  // reset for next run
+    }
+  });
+
   // ---- scan: POST + SSE consumer ------------------------------------
   const scanForm = document.getElementById("scan-form");
   const scanResultArea = document.getElementById("scan-result-area");
@@ -83,7 +114,7 @@
   }
 
   async function startScan(rel, targetEl) {
-    targetEl.innerHTML = `<p class="scan-status">⏳ resolving "${escapeHtml(rel)}"…</p>`;
+    targetEl.innerHTML = `<p class="scan-status"><span class="spinner"></span> "${escapeHtml(rel)}" を解析準備中…</p>`;
     let resp;
     try {
       resp = await fetch("/api/scan", {
@@ -107,6 +138,14 @@
 
   function consumeSse(jobId, targetEl) {
     const counts = { OK: 0, WARN: 0, FAIL: 0 };
+    const startedAt = performance.now();
+    const elapsedEl = targetEl.querySelector(".scan-elapsed");
+    const tickHandle = setInterval(() => {
+      if (elapsedEl) {
+        elapsedEl.textContent = `${((performance.now() - startedAt) / 1000).toFixed(1)}s`;
+      }
+    }, 100);
+    const finalElapsed = () => ((performance.now() - startedAt) / 1000).toFixed(2);
     const sse = new EventSource(`/api/scan/${jobId}/events`);
     sse.addEventListener("file_done", (e) => {
       const payload = JSON.parse(e.data);
@@ -117,10 +156,13 @@
     });
     sse.addEventListener("done", () => {
       sse.close();
+      clearInterval(tickHandle);
+      if (elapsedEl) elapsedEl.textContent = `${finalElapsed()}s`;
       finalize(targetEl, jobId);
     });
     sse.addEventListener("error", () => {
       sse.close();
+      clearInterval(tickHandle);
       const state = targetEl.querySelector(".scan-state");
       if (state) {
         state.textContent = "sse error";
@@ -213,10 +255,11 @@
     return `
       <article class="scan-card" data-job-id="${data.job_id}">
         <header class="scan-card__header">
-          <h3>Scan job</h3>
+          <h3><span class="spinner"></span>解析中</h3>
           <code class="scan-job-id">${data.job_id}</code>
           <span class="scan-progress-counter">
             <span class="scan-done">0</span> / <span class="scan-total">${data.total_files}</span>
+            ファイル · <span class="scan-elapsed">0.0s</span>
           </span>
         </header>
         <progress class="scan-progress-bar" max="${data.total_files}" value="0"></progress>
@@ -262,6 +305,8 @@
   function finalize(targetEl, jobId) {
     const state = targetEl.querySelector(".scan-state");
     const downloads = targetEl.querySelector(".scan-downloads");
+    const heading = targetEl.querySelector(".scan-card__header h3");
+    if (heading) heading.textContent = "完了";  // remove spinner
     if (state) {
       state.textContent = "done";
       state.className = "scan-state scan-state--done";

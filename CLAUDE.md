@@ -56,6 +56,16 @@ ASMR ファイルの drag & drop で 1 ファイル inspect、`/library` ボリ�
 
 設計詳細: [docs/adr/0014-web-frontend-layering.md](docs/adr/0014-web-frontend-layering.md)
 
+## 対象ユーザーは ASMR 視聴者 (制作者ではない)
+
+このツールの対象は **これから ASMR を聴く人** であって、ASMR を制作する人ではない。
+- diagnosis / insights の文言・recommendation はすべて視聴前に判断する人向けに書く。
+  「DAW で…」「マイク位置…」「Limiter…」のような制作側 advice は NG。
+- 代わりに「イヤホン推奨」「音量控えめに」「就寝視聴向き」「BGM 用途 OK」「binaural 視聴
+  期待してたなら別音源を」のような視聴体験を左右する advice を提供する。
+- 翻訳層は `src/asmr_balance/web/views/diagnosis.py` / `insights.py` の 2 ファイル。
+  domain (rules) は pure なので触らず、view 層で listener-friendly に変換する。
+
 ## CI / hooks ミラー
 
 `lefthook` (pre-commit / pre-push) と GitHub Actions ワークフローは同じ gate を実行する。
