@@ -58,6 +58,18 @@ def test_list_rejects_traversal(library_root: Path) -> None:
     assert exc_info.value.status_code == 404
 
 
+def test_list_rejects_nested_traversal(library_root: Path) -> None:
+    with pytest.raises(LibraryPathError) as exc_info:
+        list_library("album/../..")
+    assert exc_info.value.reason == "escapes library root"
+
+
+def test_list_rejects_absolute_path(library_root: Path) -> None:
+    with pytest.raises(LibraryPathError) as exc_info:
+        list_library("/etc")
+    assert exc_info.value.reason == "escapes library root"
+
+
 def test_list_rejects_missing(library_root: Path) -> None:
     with pytest.raises(LibraryPathError) as exc_info:
         list_library("does/not/exist")

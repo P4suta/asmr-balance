@@ -183,3 +183,25 @@ def test_download_report_404_when_job_still_running(
         assert response.status_code == 404
     finally:
         stop.set()
+
+
+def test_download_report_404_when_file_missing(
+    client: TestClient, library_root: Path, reports_root: Path
+) -> None:
+    # Job runs to completion; delete the report file to simulate a
+    # post-completion race (cleanup task, manual ``web-reset``, …).
+    write_balanced_tone(library_root / "x.wav", duration_sec=0.5)
+    start = client.post("/api/scan", json={"paths": ["x.wav"]})
+    job_id = start.json()["job_id"]
+    with client.stream("GET", f"/api/scan/{job_id}/events") as resp:
+        for _ in resp.iter_lines():
+            pass
+    _wait_until(lambda: client.get(f"/api/scan/{job_id}").json()["state"] == "done")
+
+    (reports_root / job_id / "report.parquet").unlink()
+
+    response = client.get(f"/api/scan/{job_id}/report.parquet")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error"] == "ScanReportNotReadyError"
+    assert body["context"]["reason"] == "report.parquet missing"
