@@ -26,7 +26,10 @@ pre-commit:
     defensive-grep:
       run: just lint-defensive
     secrets:
-      run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source=/repo --no-banner
+      # Pinned tag so docker layer cache hits across runs (``:latest`` re-pulls
+      # whenever the upstream digest moves). Dependabot does not scan lefthook
+      # configs, so bump manually when a relevant gitleaks release lands.
+      run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1 detect --source=/repo --no-banner
 
 commit-msg:
   commands:
