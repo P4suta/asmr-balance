@@ -40,7 +40,7 @@ jobs:
         with:
           enable-cache: true
       - name: Cache ruff
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ruff_cache
           key: ruff-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
@@ -97,14 +97,14 @@ jobs:
         with:
           enable-cache: true
       - name: Cache hypothesis database
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .hypothesis
           key: hypothesis-${{ runner.os }}-${{ hashFiles('tests/property/**', 'src/asmr_balance/**.py') }}
           restore-keys: |
             hypothesis-${{ runner.os }}-
       - name: Cache pytest
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .pytest_cache
           key: pytest-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
