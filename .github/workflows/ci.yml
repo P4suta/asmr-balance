@@ -112,7 +112,7 @@ jobs:
             pytest-${{ runner.os }}-
       - run: uv sync --frozen --all-groups
       - run: uv run pytest
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         if: ${{ env.CODECOV_TOKEN != '' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
