@@ -64,7 +64,7 @@ required-version = ">=0.7"
 [dependency-groups]
 dev = [
     "ruff",
-    "ty>=0.0.39",
+    "ty>=0.0.61",
     "bandit",
     "vulture",
     "pre-commit",
