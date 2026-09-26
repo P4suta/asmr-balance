@@ -103,7 +103,7 @@ prop: dev-up
     HYPOTHESIS_PROFILE=ci {{DC}} uv run pytest tests/property -m property
 
 regression: dev-up
-    {{DC}} uv run pytest tests/regression -m regression
+    {{DC}} uv run pytest tests/regression -m regression --no-cov
 
 e2e: dev-up
     {{DC}} uv run pytest tests/e2e -m e2e
