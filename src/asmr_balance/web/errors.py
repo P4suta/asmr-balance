@@ -33,7 +33,6 @@ from asmr_balance.web.dto import ErrorEnvelope
 from asmr_balance.web.use_cases.errors import DomainError
 
 _REQUEST_ID_HEADER: Final[str] = "X-Request-ID"
-_log = get_logger(__name__)
 
 
 def _new_trace_id() -> str:
@@ -86,7 +85,7 @@ async def _domain_handler(request: Request, exc: Exception) -> JSONResponse:
     if not isinstance(exc, DomainError):  # pragma: no cover -- starlette dispatch guarantees this
         raise TypeError(exc)
     trace_id = _trace_id_of(request)
-    _log.warning(
+    get_logger(__name__).warning(
         "domain_error",
         error=exc.__class__.__name__,
         detail=str(exc),
@@ -110,7 +109,7 @@ async def _http_exception_handler(
     if not isinstance(exc, StarletteHTTPException):  # pragma: no cover
         raise TypeError(exc)
     trace_id = _trace_id_of(request)
-    _log.info(
+    get_logger(__name__).info(
         "http_exception",
         error="HTTPException",
         detail=str(exc.detail),
@@ -138,7 +137,7 @@ async def _validation_handler(
         raise TypeError(exc)
     trace_id = _trace_id_of(request)
     errors = exc.errors()
-    _log.warning(
+    get_logger(__name__).warning(
         "request_validation_error",
         error="RequestValidationError",
         errors=errors,
@@ -157,7 +156,7 @@ async def _validation_handler(
 async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all for non-domain exceptions — log the trace, hide it from clients."""
     trace_id = _trace_id_of(request)
-    _log.exception(
+    get_logger(__name__).exception(
         "unhandled_exception",
         error=exc.__class__.__name__,
         status=_STATUS_INTERNAL,

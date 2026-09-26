@@ -62,8 +62,8 @@ def configure_logging(level: str | None = None, *, json: bool = False) -> None:
         processors=[*shared_processors, renderer],
         wrapper_class=structlog.make_filtering_bound_logger(numeric_level),
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
-        cache_logger_on_first_use=True,
+        logger_factory=lambda *_: structlog.PrintLogger(file=sys.stderr),
+        cache_logger_on_first_use=False,
     )
 
     logging.basicConfig(level=numeric_level, format="%(message)s", stream=sys.stderr)

@@ -100,13 +100,13 @@ cov: dev-up
     {{DC}} uv run pytest
 
 prop: dev-up
-    HYPOTHESIS_PROFILE=ci {{DC}} uv run pytest tests/property -m property
+    HYPOTHESIS_PROFILE=ci {{DC}} uv run pytest tests/property -m property --no-cov
 
 regression: dev-up
     {{DC}} uv run pytest tests/regression -m regression --no-cov
 
 e2e: dev-up
-    {{DC}} uv run pytest tests/e2e -m e2e
+    {{DC}} uv run pytest tests/e2e -m e2e --no-cov
 
 mutate: dev-up
     {{DC}} uv run mutmut run
