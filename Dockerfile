@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         curl \
         git
 
-# uv (latest mainline from ghcr — Dependabot bumps the tag)
+# uv (latest mainline from ghcr — Renovate bumps the tag)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app

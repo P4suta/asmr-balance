@@ -35,7 +35,6 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
-_log = get_logger(__name__)
 
 
 def _version_callback(value: bool) -> None:
@@ -92,7 +91,9 @@ def scan(
     """Recursively analyze files under ``PATH`` and write the report."""
     config = _resolve_config(config_file, gate, layout, workers)
     files = _find_audio_files(path)
-    _log.info("scan_start", root=str(path), file_count=len(files), workers=config.workers)
+    get_logger(__name__).info(
+        "scan_start", root=str(path), file_count=len(files), workers=config.workers
+    )
     if not files:
         typer.echo(f"no audio files found under {path}")
         raise typer.Exit(code=1)
@@ -107,7 +108,7 @@ def scan(
             for sink in sinks:
                 sink.write(result)
             written += 1
-            _log.info(
+            get_logger(__name__).info(
                 "scanned",
                 file=str(result.record.meta.file_path),
                 verdict=result.verdict.name,
@@ -117,7 +118,7 @@ def scan(
     finally:
         for sink in sinks:
             sink.close()
-    _log.info("scan_done", file_count=written, parquet=str(out))
+    get_logger(__name__).info("scan_done", file_count=written, parquet=str(out))
 
 
 @app.command()

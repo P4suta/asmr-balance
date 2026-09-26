@@ -60,6 +60,8 @@ packages = ["src/asmr_balance"]
 
 [tool.uv]
 required-version = ">=0.7"
+# Keep the transitive CLI stack above the first release that fixes PYSEC-2026-2132.
+constraint-dependencies = ["click>=8.3.3"]
 
 [dependency-groups]
 dev = [
@@ -80,7 +82,7 @@ test = [
     "hypothesis",
     "mutmut",
     "pyloudnorm",
-    "httpx",
+    "httpx2",
 ]
 docs = [
     "mkdocs-material",

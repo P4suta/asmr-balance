@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import io
+from contextlib import redirect_stderr
+
 import structlog
 
 from asmr_balance.logging import configure_logging, get_logger
@@ -34,3 +37,17 @@ def test_configure_logging_json_mode() -> None:
     configure_logging(level="INFO", json=True)
     logger = get_logger("test4")
     logger.info("event_json")
+
+
+def test_logging_does_not_reuse_a_closed_output_stream() -> None:
+    first = io.StringIO()
+    with redirect_stderr(first):
+        configure_logging(level="INFO", json=True)
+        get_logger("reconfigured").info("first")
+    first.close()
+
+    second = io.StringIO()
+    with redirect_stderr(second):
+        get_logger("reconfigured").info("second")
+
+    assert '"event": "second"' in second.getvalue()
