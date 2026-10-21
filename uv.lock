@@ -108,52 +108,52 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "av" },
-    { name = "fastapi" },
-    { name = "jinja2" },
-    { name = "numpy" },
-    { name = "plotly" },
-    { name = "polars" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "python-multipart" },
-    { name = "rich" },
-    { name = "scipy" },
-    { name = "soundfile" },
-    { name = "structlog" },
-    { name = "typer" },
-    { name = "uvicorn", extras = ["standard"] },
+    { name = "av", specifier = ">=17.0.1" },
+    { name = "fastapi", specifier = ">=0.136.3" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "numpy", specifier = ">=2.4.6" },
+    { name = "plotly", specifier = ">=6.7.0" },
+    { name = "polars", specifier = ">=1.44.2" },
+    { name = "pyarrow", specifier = ">=24.0.0" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "pydantic-settings", specifier = ">=2.15.0" },
+    { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "rich", specifier = ">=14.3.4" },
+    { name = "scipy", specifier = ">=1.17.1" },
+    { name = "soundfile", specifier = ">=0.13.1" },
+    { name = "structlog", specifier = ">=25.5.0" },
+    { name = "typer", specifier = ">=0.27.2" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bandit" },
-    { name = "cyclonedx-py" },
-    { name = "pip-audit" },
-    { name = "pre-commit" },
-    { name = "ruff" },
+    { name = "bandit", specifier = ">=1.9.4" },
+    { name = "cyclonedx-py", specifier = ">=1.0.1" },
+    { name = "pip-audit", specifier = ">=2.10.0" },
+    { name = "pre-commit", specifier = ">=4.6.0" },
+    { name = "ruff", specifier = ">=0.15.14" },
     { name = "ty", specifier = ">=0.0.39" },
-    { name = "vulture" },
+    { name = "vulture", specifier = ">=2.16" },
 ]
 docs = [
-    { name = "mkdocs-material" },
-    { name = "pdoc" },
+    { name = "mkdocs-material", specifier = ">=9.7.7" },
+    { name = "pdoc", specifier = ">=16.0.0" },
 ]
 release = [
-    { name = "git-cliff" },
-    { name = "python-semantic-release" },
+    { name = "git-cliff", specifier = ">=2.13.1" },
+    { name = "python-semantic-release", specifier = ">=10.6.1" },
 ]
 test = [
-    { name = "httpx2" },
-    { name = "hypothesis" },
-    { name = "mutmut" },
-    { name = "pyloudnorm" },
-    { name = "pytest" },
-    { name = "pytest-benchmark" },
-    { name = "pytest-cov" },
-    { name = "pytest-randomly" },
-    { name = "pytest-xdist" },
+    { name = "httpx2", specifier = ">=2.13.1" },
+    { name = "hypothesis", specifier = ">=6.152.9" },
+    { name = "mutmut", specifier = ">=3.5.0" },
+    { name = "pyloudnorm", specifier = ">=0.2.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest-benchmark", specifier = ">=5.2.3" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
+    { name = "pytest-randomly", specifier = ">=4.1.0" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
 ]
 
 [[package]]
