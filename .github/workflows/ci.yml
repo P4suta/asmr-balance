@@ -1,15 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main, "redesign/**"]
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - ".gitignore"
-      - ".env.example"
-      - "CLAUDE.md"
   pull_request:
+  merge_group:
+
 permissions:
   contents: read
 
@@ -17,151 +11,73 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Default uv parallel download is 8; bump for faster cold installs on CI
-  # (no measurable cost when warm).
-  UV_NETWORK_CONCURRENCY: "16"
-
 jobs:
-  lint:
-    name: Static lint
-    runs-on: ubuntu-latest
+  quality:
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      app: ${{ steps.changes.outputs.app }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - name: Cache ruff
-        uses: actions/cache@v4
-        with:
-          path: .ruff_cache
-          key: ruff-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            ruff-${{ runner.os }}-
-      - run: uv sync --frozen --all-groups
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run ty check
-      - run: uv run bandit -c pyproject.toml -r src
-      - run: uv run vulture src --min-confidence 70
-
-  defensive:
-    name: Defensive grep gates
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install ripgrep
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
-      - name: Defensive gates
-        shell: bash
-        run: |
-          set -e
-          fail() { echo "::error::$1"; exit 1; }
-          ! rg -nP '^\s*print\(' src/ tests/ || fail "print() forbidden — use structlog"
-          ! rg -nP '#\s*TODO(?!\(#\d+\))' src/ || fail "TODO must include (#issue)"
-          ! rg -nP '#\s*type:\s*ignore(?!\[[\w,-]+\])' src/ || fail "# type: ignore must specify rule code"
-          ! rg -nP '#\s*noqa(?!:\s*\w+)' src/ || fail "# noqa must specify rule code"
-          ! rg -nP '#\s*noqa(?!:\s*\w+)' src/asmr_balance/ || fail "no bare noqa in src/asmr_balance/"
-          ! rg -nP '#\s*type:\s*ignore' src/asmr_balance/ || fail "no type: ignore in src/asmr_balance/"
-          ! rg -nP '\.(z_blocks|_acc_l|_acc_r|_zi_l|_zi_r)\b' src/ || fail "no private DSP state access"
-          ! rg -nP '^\s*except\s*:' src/ || fail "bare except forbidden"
-          ! rg -nP '\beval\(|\bexec\(' src/ || fail "eval/exec forbidden"
-          ! rg -nP 'continue-on-error:\s*true' .github/ || fail "continue-on-error forbidden — fix the root cause"
-          ! rg -nP '\b__import__\(' src/ || fail "dynamic __import__ forbidden"
-          echo "✓ defensive gates passed"
-
-  actionlint:
-    name: GHA workflow lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: rhysd/actionlint@main
-
-  test:
-    name: Test + coverage (branch 100%)
-    runs-on: ubuntu-latest
-    needs: [lint, defensive]
-    steps:
-      - uses: actions/checkout@v6
-      - name: System deps
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - name: Cache hypothesis database
-        uses: actions/cache@v4
-        with:
-          path: .hypothesis
-          key: hypothesis-${{ runner.os }}-${{ hashFiles('tests/property/**', 'src/asmr_balance/**.py') }}
-          restore-keys: |
-            hypothesis-${{ runner.os }}-
-      - name: Cache pytest
-        uses: actions/cache@v4
-        with:
-          path: .pytest_cache
-          key: pytest-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            pytest-${{ runner.os }}-
-      - run: uv sync --frozen --all-groups
-      - run: uv run pytest
-      - uses: codecov/codecov-action@v6
-        if: ${{ env.CODECOV_TOKEN != '' }}
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: coverage.xml
-          fail_ci_if_error: true
-
-  # Mutation testing intentionally lives outside CI — see Justfile `just mutate`
-  # for the local recipe. Running mutmut on every commit would balloon the
-  # CI budget without telling us anything useful most of the time; we keep
-  # the 80% kill-rate as a release-time check, not a per-PR gate.
-
-  audit:
-    name: pip-audit (CVE scan)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-      - run: uv sync --frozen --all-groups
-      - run: uv run pip-audit
-
-  secrets:
-    name: trufflehog (verified secrets)
-    runs-on: ubuntu-latest
-    # PR-only: on push events the action needs a stable BASE to diff against
-    # (and silently fails on branches with single-commit history). Pre-commit
-    # ``gitleaks`` already covers local push protection; trufflehog focuses on
-    # the *diff* the maintainer is about to merge.
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-      - uses: trufflesecurity/trufflehog@main
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
         with:
-          path: ./
-          base: ${{ github.event.pull_request.base.sha }}
-          head: ${{ github.event.pull_request.head.sha }}
-          extra_args: --only-verified
+          base: >-
+            ${{ github.event.merge_group.base_sha ||
+            github.event.repository.default_branch }}
+          filters: .github/filters/ci.yml
+      - name: Validate selection
+        env:
+          APP_FILTER: ${{ steps.changes.outputs.app }}
+        run: jq -en --arg app "$APP_FILTER" '$app == "true" or $app == "false"'
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          version: v2026.10.13
+          sha256: 94c45523c7b6760b7da704f16051171ca32e8447a849a02266a439a4455e9a12
+          install_args: just lefthook actionlint typos gitleaks ubi:crate-ci/committed ripgrep
+      - run: mise x -- just lint-text
 
-  # The one status check branch protection requires,
-  # named the same in every P4suta repository.
-  # It passes only when every job it needs succeeded or was skipped.
+  app:
+    needs: [quality]
+    if: needs.quality.outputs.app == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          version: v2026.10.13
+          sha256: 94c45523c7b6760b7da704f16051171ca32e8447a849a02266a439a4455e9a12
+          install_args: just ripgrep
+      - run: mise x -- just docker-build verify-app
+
   required:
     name: required
     if: always()
-    needs: [lint, defensive, actionlint, test, audit, secrets]
-    runs-on: ubuntu-latest
+    needs: [quality, app]
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Fail unless every needed job succeeded or was skipped
+      - name: Require the selected work
         env:
-          RESULTS: ${{ toJSON(needs.*.result) }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "${RESULTS}"
-          jq -e 'all(.[]; IN("success", "skipped"))' <<< "${RESULTS}"
+          jq -en --argjson needs "$NEEDS" '
+            $needs |
+            (keys == ["app", "quality"]) and
+            (.quality.result == "success") and
+            (.quality.outputs.app | IN("true", "false")) and
+            (.app.result == (
+              if .quality.outputs.app == "true" then "success"
+              else "skipped" end
+            ))
+          '

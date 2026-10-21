@@ -20,6 +20,7 @@ site
 report
 *.parquet
 *.html
+!src/asmr_balance/web/templates/**/*.html
 *.benchmark
 .benchmarks
 node_modules

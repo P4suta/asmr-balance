@@ -1,12 +1,14 @@
 # 0010 — Release automation
 
-- Status: Accepted
+- Status: Partly superseded by [manual distribution verification](manual-release-candidates.md)
 - Date: 2026-05-12
 - Deciders: @P4suta
 
 ## Context
 
-User `feedback_no_cron_in_repos`: GHA `on.schedule` 禁止、Dependabot weekly のみ例外。`feedback_prefer_latest_not_pinning`: deps は lockfile + Dependabot で最新、Actions は SHA pin + Dependabot bump。
+This decision originally coupled version preparation and publication to ordinary main pushes.
+The current workflow verifies unpublished distributions on explicit dispatch.
+The remaining text records the original pipeline.
 
 Release は手動 tag 打ちでなく、Conventional Commits に基づいて semantic bump → tag → GitHub Release → SBOM → (Optional) PyPI publish を自動化したい。
 
@@ -14,12 +16,12 @@ Release は手動 tag 打ちでなく、Conventional Commits に基づいて sem
 
 ### Conventional Commits
 
-- `conventional-pre-commit` で commit-msg を local 検証 ([.pre-commit-config.yaml](../../.pre-commit-config.yaml))
+- `conventional-pre-commit` で commit-msg を local 検証 ([.pre-commit-config.yaml](https://github.com/P4suta/asmr-balance/blob/main/.pre-commit-config.yaml))
 - 許容 type: `feat`, `fix`, `perf`, `refactor`, `style`, `test`, `build`, `ci`, `docs`, `chore`, `revert`
 
 ### Changelog
 
-- `git-cliff` で `CHANGELOG.md` を Conventional Commits から自動生成 ([cliff.toml](../../cliff.toml))
+- `git-cliff` で `CHANGELOG.md` を Conventional Commits から自動生成 ([cliff.toml](https://github.com/P4suta/asmr-balance/blob/main/cliff.toml))
 
 ### Release pipeline (`release.yml`)
 
@@ -43,7 +45,7 @@ Release は手動 tag 打ちでなく、Conventional Commits に基づいて sem
 | `github-actions` | `.github/workflows/*.yml` の action SHA | weekly |
 | `docker` | `Dockerfile` の base image | weekly |
 
-GHA action は初期 `@v4` 等の tag で書き始めるが、初回 Dependabot PR で SHA pin に bump される運用。手動 SHA は書かない (`feedback_consult_official_docs`: memory は仮説、docs は事実)。
+Action references originally used version tags, with digest pinning delegated to dependency update proposals.
 
 ### `on.schedule` は使わない
 

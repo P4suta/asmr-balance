@@ -8,6 +8,7 @@
 locale = "en-us"
 
 [default.extend-words]
+CPY = "CPY"
 # Audio engineering vocabulary
 asmr = "asmr"
 lufs = "lufs"

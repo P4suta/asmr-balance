@@ -1,12 +1,13 @@
-# syntax=docker/dockerfile:1.7
-FROM python:3.14-slim-bookworm
+# syntax=docker/dockerfile:1.28@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
+FROM python:3.14.8-slim-bookworm@sha256:58b9cb2dde6dc8ca7cabd10942d9d01ead923811b191f259008942f7b402ca7e
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
-    UV_PYTHON=3.14 \
+    UV_PYTHON=/usr/local/bin/python \
+    UV_PYTHON_DOWNLOADS=never \
     UV_COMPILE_BYTECODE=1 \
     PATH="/opt/venv/bin:${PATH}"
 
@@ -28,8 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         curl \
         git
 
-# uv (latest mainline from ghcr — Renovate bumps the tag)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
@@ -38,15 +38,14 @@ WORKDIR /app
 RUN git config --global --add safe.directory /app
 
 # Layer cache: lockfile/manifest first, then full source
-COPY pyproject.toml uv.lock* README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/asmr_balance/__init__.py src/asmr_balance/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --all-groups --no-install-project || \
-    uv sync --all-groups --no-install-project
+    uv sync --frozen --all-groups --no-install-project
 
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --all-groups || uv sync --all-groups
+    uv sync --frozen --all-groups
 
 ENTRYPOINT []
 CMD ["bash"]

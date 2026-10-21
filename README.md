@@ -1,121 +1,23 @@
 # asmr-balance
 
-**ASMR の視聴前チェッカー**。これから聴く音源を解析して、左右バランス・音量レベル・
-再生機材への適性 (イヤホン推奨か / スピーカーで OK か / 音割れリスクは) を視聴者向けに診断する。
+Check ASMR audio balance, loudness, and playback issues before listening.
+The web interface accepts audio and video files and suggests suitable playback settings.
 
-> 「ステレオと表記されているのに実はモノラル」「片耳寄りで聞こえる」「スピーカー再生で
-> 低音が消える」「大音量再生で音割れする」 — こうした視聴体験に直結する問題を、
-> ITU-R BS.1770-5 ベースの 30+ metric と 11 ルールで自動検出。
->
-> ASMR でよく流通している **96 / 192 kHz** ・ **24-bit / 32-bit float** ソースを
-> first-class でサポート (sample rate に関わらず BS.1770 parity を CI で保証)。
+## Quick start
 
-## Web UI quickstart (推奨)
+Install Docker with Compose, then run:
 
-視聴前のチェック用途 — Docker Desktop / Docker Engine があれば OS を問わずこの 3 手順:
-
-```bash
+```sh
 git clone https://github.com/P4suta/asmr-balance.git
 cd asmr-balance
-docker compose up -d --build web   # 初回は数分かかる
-```
-
-→ http://127.0.0.1:8000 をブラウザで開く。
-音声 / 動画ファイルを **drag & drop** → 視聴向け診断 (左右バランス / 音量 / 音割れリスク /
-帯域別の偏り) と「視聴時のコツ」が即座に表示される。
-
-ライブラリ全体をスキャンする場合は `ASMR_LIBRARY_PATH` をホスト側パスに設定:
-
-```bash
-# .env.example をコピーして編集
-cp .env.example .env
-echo 'ASMR_LIBRARY_PATH=/mnt/d/ASMR' >> .env   # Linux / WSL2
-# Windows ネイティブ (PowerShell):
-#   "ASMR_LIBRARY_PATH=D:\ASMR" | Out-File -Encoding ascii -Append .env
 docker compose up -d --build web
 ```
 
-container 内では `/library` で read-only マウントされ、`/api/library` から browse 可能 (Phase 1b)。
+Open <http://127.0.0.1:8000> and drop a file into the page.
 
-詳細設計: [docs/adr/0014-web-frontend-layering.md](docs/adr/0014-web-frontend-layering.md)
-
-## v1.0.0 のアーキテクチャ
-
-`Source ─push─▶ SignalGraph(Filter…) ─push─▶ Reducer… ─assemble─▶ MetricRecord ─rules─▶ Flags + Verdict ─▶ Sink…`
-
-- **Filter** = Mealy stream transformer (K-weighting, 1/3-octave bandsplit, 4x oversample 等)
-- **Reducer** = stream → 1 つの typed metric subtree
-- **Rule** = 1 つの typed predicate × severity × threshold subtree
-- **Verdict** = bounded join-semilattice (`OK ⊑ WARN ⊑ FAIL`)
-
-詳細は `docs/adr/` (特に [0011](docs/adr/0011-signal-dag-redesign.md) /
-[0012](docs/adr/0012-rule-algebra-verdict-semilattice.md) /
-[0013](docs/adr/0013-dsp-science-upgrade.md)) を参照。
-
-## 主要 metric
-
-| Subtree | Metric | 内容 |
-| --- | --- | --- |
-| `loudness` | `lufs_i_stereo` | ITU-R BS.1770-5 spec-compliant integrated loudness |
-| `loudness` | `single_channel_lufs_{l,r}` | K-weighted gated mean per channel (ADR-0004) |
-| `loudness` | `delta_lu` | 主 imbalance scalar (`L − R` in LU) |
-| `lra` | `lra_lu` | EBU R128 §3.5 loudness range (P95 − P10) |
-| `lra` | `max_short_term_lufs` | 最大短期ラウドネス (3 s window) |
-| `correlation` | `pearson_r` | Welford online L/R correlation |
-| `correlation` | `ms_ratio_db` | Mid/Side RMS 比 |
-| `band` | `{low, low_mid, high_mid, high}` | 4-band aggregate (1/3-octave roll-up) |
-| `band` | `third_octave.b_*hz` | 31 個の 1/3-octave band imbalance (ANSI S1.11) |
-| `sliding` | `{max, p95, std, t_max_sec}_lu` | 1 s window 上の ΔLU 統計 |
-| `phase` | `low_phase_coherence` | <300 Hz 帯の Welford xcorr |
-| `dynamics` | `true_peak_dbtp_{l, r, max}` | BS.1770-5 Annex 2 4x polyphase oversampling |
-| `dynamics` | `psr_db` | Peak-to-short-term-loudness ratio (ASMR の囁き判定) |
-
-`OK` / `WARN` / `FAIL` flag は階層 TOML config で閾値 override 可能:
-
-```toml
-[thresholds.lr_balance]
-warn_lu = 3.0
-fail_lu = 6.0
-
-[thresholds.true_peak_clip]
-warn_dbtp = -1.0
-fail_dbtp = 0.0
-```
-
-## CLI quickstart
-
-CI / 自動化向けの batch インターフェース:
-
-```bash
-just bootstrap                       # docker build + uv sync + pre-commit/lefthook install
-just scan /path/to/library           # → report.parquet (+ HTML / Rich summary)
-just inspect /path/to/single_file.mp4
-just schema --format=json            # 出力 column 一覧
-```
-
-`scan` は ProcessPoolExecutor で複数ファイル並列処理。`--workers N` で worker 数指定 (default = `os.cpu_count()`)。
-Web UI は `workers=1` で sequential (SSE 進捗が自然に流れるため — ADR-0014 参照)。
-
-## 開発
-
-```bash
-just dev         # quick loop: fmt + lint + typos + fast tests
-just lint        # ruff + ty + bandit + vulture + defensive grep
-just cov         # pytest --cov-branch --cov-fail-under=100
-just prop        # hypothesis property tests (semilattice law / IIR type-state / parity)
-just regression  # pyloudnorm ±0.1 LU parity at 44.1 / 48 / 88.2 / 96 / 192 kHz
-just mutate      # mutmut, kill rate ≥ 80% gate
-just typos       # crate-ci/typos (audio glossary allowlist in .typos.toml)
-just ci          # 全 gate 一括
-
-just web         # docker compose up -d --build web (Web UI)
-just web-logs    # tail web container logs
-just web-down    # stop web (keeps named volume)
-```
-
-Modern git hooks via [Lefthook](https://github.com/evilmartians/lefthook) — `just hooks-install` で
-pre-commit + commit-msg + pre-push を全段 wire-up (パッケージは host 側に `mise use -g lefthook@latest` で入れる)。
+See the [getting started guide](docs/guide/getting-started.md) for library scanning and CLI usage.
+The [documentation](docs/index.md) links to development checks and architecture decisions.
 
 ## License
 
-MIT
+[MIT](LICENSE).

@@ -17,22 +17,22 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy",
-    "scipy",
-    "soundfile",
-    "av",
-    "polars",
-    "pyarrow",
-    "pydantic",
-    "pydantic-settings",
-    "typer",
-    "rich",
-    "structlog",
-    "jinja2",
-    "plotly",
-    "fastapi",
-    "uvicorn[standard]",
-    "python-multipart",
+    "numpy>=2.4.6",
+    "scipy>=1.17.1",
+    "soundfile>=0.13.1",
+    "av>=17.0.1",
+    "polars>=1.44.2",
+    "pyarrow>=24.0.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.15.0",
+    "typer>=0.27.2",
+    "rich>=14.3.4",
+    "structlog>=25.5.0",
+    "jinja2>=3.1.6",
+    "plotly>=6.7.0",
+    "fastapi>=0.136.3",
+    "uvicorn[standard]>=0.54.0",
+    "python-multipart>=0.0.32",
 ]
 
 [project.scripts]
@@ -45,52 +45,49 @@ Repository = "https://github.com/P4suta/asmr-balance"
 Issues = "https://github.com/P4suta/asmr-balance/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/asmr_balance"]
 
-# Hatchling's default wheel include is .py / .pyi / py.typed only. The web
-# layer ships HTML templates and CSS / JS as package data, so list them via
-# force-include — same source path → same wheel path.
-[tool.hatch.build.targets.wheel.force-include]
-"src/asmr_balance/web/templates" = "asmr_balance/web/templates"
-"src/asmr_balance/web/static" = "asmr_balance/web/static"
-
 [tool.uv]
 required-version = ">=0.7"
-# Keep the transitive CLI stack above the first release that fixes PYSEC-2026-2132.
-constraint-dependencies = ["click>=8.3.3"]
+constraint-dependencies = [
+    "click>=8.3.3",
+    "certifi>=2026.10.19",
+    "urllib3>=2.8.0",
+    "virtualenv>=21.7.13",
+]
 
 [dependency-groups]
 dev = [
-    "ruff",
+    "ruff>=0.15.14",
     "ty>=0.0.39",
-    "bandit",
-    "vulture",
-    "pre-commit",
-    "pip-audit",
-    "cyclonedx-py",
+    "bandit>=1.9.4",
+    "vulture>=2.16",
+    "pre-commit>=4.6.0",
+    "pip-audit>=2.10.0",
+    "cyclonedx-py>=1.0.1",
 ]
 test = [
-    "pytest",
-    "pytest-cov",
-    "pytest-xdist",
-    "pytest-randomly",
-    "pytest-benchmark",
-    "hypothesis",
-    "mutmut",
-    "pyloudnorm",
-    "httpx2",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-randomly>=4.1.0",
+    "pytest-benchmark>=5.2.3",
+    "hypothesis>=6.152.9",
+    "mutmut>=3.5.0",
+    "pyloudnorm>=0.2.0",
+    "httpx2>=2.13.1",
 ]
 docs = [
-    "mkdocs-material",
-    "pdoc",
+    "mkdocs-material>=9.7.7",
+    "pdoc>=16.0.0",
 ]
 release = [
-    "python-semantic-release",
-    "git-cliff",
+    "python-semantic-release>=10.6.1",
+    "git-cliff>=2.13.1",
 ]
 
 # ----------------------------------------------------------------------

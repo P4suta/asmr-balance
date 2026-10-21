@@ -43,30 +43,34 @@ shell: dev-up
 
 # Build the image, install Python deps, and wire up git hooks.
 bootstrap: docker-build dev-up hooks-install
-    {{DC}} uv sync --all-groups
+    {{DC}} uv sync --frozen --all-groups
 
 docker-build:
-    docker compose build
+    docker compose build app
 
 # --- fmt / lint -------------------------------------------------------
 
 # `just fmt` applies auto-fixes (ruff --fix) AND format. ユーザー要望: 機械
 # 修正は default で適用、手動レビューが必要なものだけ残す。
 fmt: dev-up
-    {{DC}} bash -ceu 'uv run ruff check . --fix && uv run ruff format .'
+    {{DC}} bash -ceu 'uv run --frozen ruff check . --fix && uv run --frozen ruff format .'
 
-lint: lint-static lint-defensive typos
+lint: lint-static lint-defensive lint-text
+
+lint-text: typos
+    mise x -- actionlint
+    mise x -- gitleaks dir --redact --no-banner .
 
 # Batched into one ``bash -ceu`` so we pay the docker-exec round-trip
 # (~0.1-0.2s) once instead of five times. Fail-fast preserved via ``set -e``.
 # Type checker is ``ty`` (astral) — see ``[tool.ty]`` in pyproject.toml.
 lint-static: dev-up
     {{DC}} bash -ceu '\
-        uv run ruff check . && \
-        uv run ruff format --check . && \
-        uv run ty check && \
-        uv run bandit -c pyproject.toml -r src && \
-        uv run vulture src --min-confidence 70'
+        uv run --frozen ruff check . && \
+        uv run --frozen ruff format --check . && \
+        uv run --frozen ty check && \
+        uv run --frozen bandit -c pyproject.toml -r src && \
+        uv run --frozen vulture src --min-confidence 70'
 
 lint-defensive:
     @echo "→ defensive grep gates (host rg)"
@@ -81,11 +85,9 @@ lint-defensive:
     @! rg -nP '\.(z_blocks|_acc_l|_acc_r|_zi_l|_zi_r)\b' src/ || (echo "no private DSP state access" && exit 1)
     @echo "✓ defensive gates passed"
 
-# Run typos against the whole repo via the pre-commit hook (so the binary is
-# managed by pre-commit's cache — no need to install crate-ci/typos on the
-# host or in the project image).
-typos: dev-up
-    {{DC}} uv run pre-commit run typos --all-files
+# Text checks use native tools and do not start the app container.
+typos:
+    mise x -- typos
 
 # --- test -------------------------------------------------------------
 
@@ -94,29 +96,29 @@ typos: dev-up
 # (or the full ``just cov``) — they catch algebraic-law regressions, not
 # the kind of bugs you fix in inner dev iteration.
 test: dev-up
-    {{DC}} uv run pytest -m "not bench and not slow and not property"
+    {{DC}} uv run --frozen pytest -m "not bench and not slow and not property"
 
 cov: dev-up
-    {{DC}} uv run pytest
+    {{DC}} uv run --frozen pytest -n 2 --hypothesis-seed=1 --randomly-seed=1
 
 prop: dev-up
-    HYPOTHESIS_PROFILE=ci {{DC}} uv run pytest tests/property -m property --no-cov
+    docker compose exec -T -e HYPOTHESIS_PROFILE=ci app uv run --frozen pytest tests/property -m property --no-cov -n 2 --hypothesis-seed=1 --randomly-seed=1
 
 regression: dev-up
-    {{DC}} uv run pytest tests/regression -m regression --no-cov
+    {{DC}} uv run --frozen pytest tests/regression -m regression --no-cov
 
 e2e: dev-up
-    {{DC}} uv run pytest tests/e2e -m e2e --no-cov
+    {{DC}} uv run --frozen pytest tests/e2e -m e2e --no-cov
 
 mutate: dev-up
-    {{DC}} uv run mutmut run
-    {{DC}} uv run mutmut results
+    {{DC}} uv run --frozen mutmut run
+    {{DC}} uv run --frozen mutmut results
 
 audit: dev-up
-    {{DC}} uv run pip-audit
+    {{DC}} uv run --frozen pip-audit
 
 bench: dev-up
-    {{DC}} uv run pytest tests/bench --benchmark-only -m bench
+    {{DC}} uv run --frozen pytest tests/bench --benchmark-only -m bench
 
 # --- run --------------------------------------------------------------
 
@@ -130,7 +132,7 @@ scan PATH *FLAGS:
       ABS="$(realpath -- {{quote(PATH)}})"; \
       if [ -d "$ABS" ]; then MNT="$ABS"; else MNT="$(dirname -- "$ABS")"; fi; \
       docker compose run --rm -v "$MNT:$MNT:ro" app \
-        uv run asmr-balance scan "$ABS" {{FLAGS}}
+        uv run --frozen asmr-balance scan "$ABS" {{FLAGS}}
 
 # Inspect a single file anywhere on the host (Rich panel to stdout).
 inspect FILE *FLAGS:
@@ -138,10 +140,10 @@ inspect FILE *FLAGS:
       ABS="$(realpath -- {{quote(FILE)}})"; \
       MNT="$(dirname -- "$ABS")"; \
       docker compose run --rm -v "$MNT:$MNT:ro" app \
-        uv run asmr-balance inspect "$ABS" {{FLAGS}}
+        uv run --frozen asmr-balance inspect "$ABS" {{FLAGS}}
 
 schema *FLAGS: dev-up
-    {{DC}} uv run asmr-balance schema {{FLAGS}}
+    {{DC}} uv run --frozen asmr-balance schema {{FLAGS}}
 
 # --- web -------------------------------------------------------------
 
@@ -170,8 +172,8 @@ web-reset:
 # Install both Lefthook (fast, parallel) and pre-commit (CI-canonical) hooks.
 hooks-install: dev-up
     @echo "→ installing pre-commit hooks"
-    {{DC}} uv run pre-commit install --install-hooks
-    {{DC}} uv run pre-commit install --hook-type commit-msg
+    {{DC}} uv run --frozen pre-commit install --install-hooks
+    {{DC}} uv run --frozen pre-commit install --hook-type commit-msg
     @echo "→ installing lefthook hooks (host)"
     @command -v lefthook >/dev/null 2>&1 && lefthook install || echo "  (lefthook not installed — run 'mise use -g lefthook@latest' to enable)"
 
@@ -179,23 +181,29 @@ hooks-install: dev-up
 hooks: hooks-install
 
 upgrade-hooks: dev-up
-    {{DC}} uv run pre-commit autoupdate
+    {{DC}} uv run --frozen pre-commit autoupdate
 
 # --- docs / release ---------------------------------------------------
 
 docs: dev-up
-    {{DC}} uv run mkdocs build
-    {{DC}} uv run pdoc src/asmr_balance -o docs/api
+    {{DC}} uv run --frozen pdoc src/asmr_balance -o docs/api
+    {{DC}} uv run --frozen mkdocs build --strict
+
+package: dev-up
+    {{DC}} uv build --no-sources
+    {{DC}} uv run --frozen cyclonedx-py environment -o bom.json
 
 changelog: dev-up
-    {{DC}} uv run git-cliff -o CHANGELOG.md
+    {{DC}} uv run --frozen git-cliff -o CHANGELOG.md
 
 sbom: dev-up
-    {{DC}} uv run cyclonedx-py environment -o bom.json
+    {{DC}} uv run --frozen cyclonedx-py environment -o bom.json
 
 # --- CI aggregate -----------------------------------------------------
 
-ci: lint cov prop regression e2e audit
+verify-app: lint-static lint-defensive cov audit
+
+ci: lint-text verify-app
     @echo "✓ all gates green"
 
 # Quick developer-loop check: format + lint + fast tests + typos.

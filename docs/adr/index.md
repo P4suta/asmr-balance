@@ -13,9 +13,10 @@
 | 0007 | [Gate threshold expose](0007-gate-threshold-expose.md) | Accepted |
 | 0008 | [Strict tooling + defensive gates](0008-strict-tooling-defensive-gates.md) | Accepted |
 | 0009 | [Structured logging](0009-structured-logging.md) | Accepted |
-| 0010 | [Release automation](0010-release-automation.md) | Accepted |
+| 0010 | [Release automation](0010-release-automation.md) | Partly superseded |
 | 0011 | [Signal DAG redesign (Filter / Reducer)](0011-signal-dag-redesign.md) | Accepted |
 | 0012 | [Rule algebra + Verdict semilattice](0012-rule-algebra-verdict-semilattice.md) | Accepted |
 | 0013 | [DSP science upgrade (TruePeak / LRA / PSR / 1/3-octave)](0013-dsp-science-upgrade.md) | Accepted |
 | 0014 | [Web frontend as primary interface, layered into HTTP / use case / DTO](0014-web-frontend-layering.md) | Accepted |
 | 0015 | [Web streaming over NDJSON (inspect + scan)](0015-web-streaming-ndjson.md) | Accepted |
+| — | [Manual distribution verification](manual-release-candidates.md) | Proposed |
