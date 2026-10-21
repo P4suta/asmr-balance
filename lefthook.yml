@@ -1,44 +1,47 @@
-# Lefthook config — modern parallel git hooks (alternative to pre-commit).
-#
-# Lefthook runs commands in parallel by default and is significantly faster
-# than pre-commit for the lint matrix on this project. We keep pre-commit
-# alongside it because some upstream linters publish only pre-commit-mirror
-# revs (e.g. basedpyright). Both can be installed; lefthook is the day-to-day
-# developer-loop tool and pre-commit is the canonical CI gate.
-#
-# Install: `just lefthook-install` (or `lefthook install`).
-#
-# All commands run inside the project Docker image via `just`, so the host
-# only needs `lefthook` itself on PATH (mise: `mise use -g lefthook@latest`).
+glob_matcher: doublestar
 
 pre-commit:
   parallel: true
   commands:
     typos:
-      run: just typos
+      run: mise x -- typos
     ruff-format:
-      glob: "*.{py,pyi}"
-      run: just fmt
+      glob: "**/*.{py,pyi}"
+      run: mise x -- just fmt
       stage_fixed: true
     ruff-lint:
-      glob: "*.{py,pyi}"
-      run: just lint-static
-    defensive-grep:
-      run: just lint-defensive
+      glob: "**/*.{py,pyi}"
+      run: mise x -- just lint-static lint-defensive
+    workflows:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: mise x -- actionlint
     secrets:
-      # The pinned tag keeps Docker layer-cache hits stable across runs because `:latest` re-pulls whenever the upstream digest moves.
-      # Keep it current through reviewed dependency-update pull requests.
-      run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1 detect --source=/repo --no-banner
+      run: mise x -- gitleaks dir --redact --no-banner .
 
 commit-msg:
   commands:
     conventional:
-      run: docker compose exec -T app uv run pre-commit run conventional-pre-commit --hook-stage commit-msg --commit-msg-filename {1}
+      run: mise x -- committed --commit-file {1}
 
 pre-push:
-  parallel: false
+  piped: true
   commands:
-    coverage:
-      run: just cov
-    parity:
-      run: just regression
+    text:
+      run: mise x -- just lint-text
+    app:
+      glob:
+        - "src/**"
+        - "tests/**"
+        - "scripts/**"
+        - "pyproject.toml"
+        - "uv.lock"
+        - "Dockerfile"
+        - ".dockerignore"
+        - "docker-compose.{yml,yaml}"
+        - "Justfile"
+        - "mise.toml"
+        - "lefthook.yml"
+        - ".github/filters/ci.yml"
+        - ".github/workflows/ci.yml"
+        - ".github/workflows/release.yml"
+      run: mise x -- just verify-app

@@ -1,60 +1,35 @@
-name: Release
+name: Distribution check
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: distribution-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    if: github.repository_owner == 'P4suta' && !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+  candidate:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: astral-sh/setup-uv@v7
+          persist-credentials: false
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         with:
-          enable-cache: true
-
-      - run: uv sync --frozen --group release
-
-      - name: Semantic release (version + tag + GitHub Release)
-        id: release
-        run: |
-          uv run semantic-release version --commit --push --vcs-release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate CHANGELOG.md
-        run: uv run git-cliff --tag "$(uv run semantic-release version --print)" -o CHANGELOG.md
-
-      - name: Build distribution
-        run: uv build
-
-      - name: SBOM (CycloneDX)
-        run: uv run cyclonedx-py environment -o bom.json
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+          version: v2026.10.13
+          sha256: 94c45523c7b6760b7da704f16051171ca32e8447a849a02266a439a4455e9a12
+          install_args: just lefthook actionlint typos gitleaks ubi:crate-ci/committed ripgrep
+      - run: mise x -- just docker-build ci package
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: release-artifacts
+          name: distribution-${{ github.sha }}
           path: |
             dist/
-            CHANGELOG.md
             bom.json
-
-      - name: Publish to PyPI (trusted publishing)
-        if: ${{ env.PYPI_PUBLISH == 'true' }}
-        env:
-          PYPI_PUBLISH: ${{ vars.PYPI_PUBLISH }}
-        run: uv publish
+          if-no-files-found: error
+          retention-days: 7

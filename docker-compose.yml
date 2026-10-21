@@ -7,7 +7,7 @@ x-app-base: &app-base
   build:
     context: .
     dockerfile: Dockerfile
-  image: asmr-balance:dev
+  image: ${ASMR_IMAGE:-asmr-balance:dev}
   working_dir: /app
   init: true
 
