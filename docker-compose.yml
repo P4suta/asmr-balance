@@ -1,13 +1,9 @@
-# Compose file for both the CLI dev shell (``app``) and the Web UI (``web``).
-# Common image / mounts / env are defined once as top-level ``x-…`` anchors
-# (compose ignores ``x-`` keys) and reused via YAML merge so the two services
-# stay in lockstep.
+# CLI and web services share the same build context and settings.
 
 x-app-base: &app-base
   build:
     context: .
     dockerfile: Dockerfile
-  image: asmr-balance:dev
   working_dir: /app
   init: true
 
