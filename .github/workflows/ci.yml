@@ -36,10 +36,10 @@ jobs:
         env:
           APP_FILTER: ${{ steps.changes.outputs.app }}
         run: jq -en --arg app "$APP_FILTER" '$app == "true" or $app == "false"'
-      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: v2026.10.13
-          sha256: 94c45523c7b6760b7da704f16051171ca32e8447a849a02266a439a4455e9a12
+          version: v2026.11.8
+          sha256: 32b6abe844efa43d37d7ac4ed21d2ec41e9479d66feb19b0db8d2c548cd6e36d
           install_args: just lefthook actionlint typos gitleaks ubi:crate-ci/committed ripgrep
       - run: mise x -- just lint-text
 
@@ -52,10 +52,10 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: v2026.10.13
-          sha256: 94c45523c7b6760b7da704f16051171ca32e8447a849a02266a439a4455e9a12
+          version: v2026.11.8
+          sha256: 32b6abe844efa43d37d7ac4ed21d2ec41e9479d66feb19b0db8d2c548cd6e36d
           install_args: just ripgrep
       - run: mise x -- just docker-build verify-app
 
